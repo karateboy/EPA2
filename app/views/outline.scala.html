@@ -1,0 +1,356 @@
+@* outline Template File *@
+@(title: String, user:controllers.Security.UserInfo, privilege: Privilege, content:Html)(implicit request: RequestHeader, messages: Messages)
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta charset="utf-8">
+    <META HTTP-EQUIV="Pragma" CONTENT="no-cache">
+	<META HTTP-EQUIV="Expires" CONTENT="-1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="Aragorn Huang">
+    <title>@title</title>
+
+    <link href='@routes.Assets.at("css/bootstrap.min.css")' rel="stylesheet">
+    <link href='@routes.Assets.at("font-awesome/css/font-awesome.css")' rel="stylesheet">
+
+    <!-- Data Tables -->
+
+    <link href='@routes.Assets.at("css/plugins/dataTables/dataTables.bootstrap.css")' rel="stylesheet">
+    <link href='@routes.Assets.at("css/plugins/dataTables/dataTables.responsive.css")' rel="stylesheet">
+    <link href='@routes.Assets.at("css/plugins/dataTables/dataTables.tableTools.min.css")' rel="stylesheet">
+
+	<link href='@routes.Assets.at("css/plugins/dataTables/jquery.dataTables.min.css")' rel="stylesheet">
+
+	<!-- Datepicker --> 
+	<link href="@routes.Assets.at("css/plugins/datepicker/datepicker3.css")" rel="stylesheet">	
+	<link href="@routes.Assets.at("css/plugins/datetimepicker/bootstrap-datetimepicker.min.css")" rel="stylesheet">
+	<link href="@routes.Assets.at("css/plugins/morris/morris-0.4.3.min.css")" rel="stylesheet">
+
+    <link href='@routes.Assets.at("css/animate.css")' rel="stylesheet">
+    <link href='@routes.Assets.at("css/style.css")' rel="stylesheet">
+    <link href='@routes.Assets.at("css/plugins/awesome-bootstrap-checkbox/awesome-bootstrap-checkbox.css")' rel="stylesheet">
+	<link href='@routes.Assets.at("css/aqm.css")' rel="stylesheet">
+	
+
+	<!-- Mainly scripts -->
+	<script src='@routes.Assets.at("js/jquery-2.1.4.min.js")'></script>
+	<script src='@routes.Assets.at("js/bootstrap.min.js")'></script>
+	<script src='@routes.Assets.at("js/plugins/metisMenu/jquery.metisMenu.js")'></script>
+	<script src='@routes.Assets.at("js/plugins/slimscroll/jquery.slimscroll.min.js")'></script>
+
+    <!-- Data Tables -->
+    <script src='@routes.Assets.at("js/plugins/dataTables/jquery.dataTables.js")'></script>
+    <script src='@routes.Assets.at("js/plugins/dataTables/dataTables.bootstrap.js")'></script>
+    <script src='@routes.Assets.at("js/plugins/dataTables/dataTables.responsive.js")'></script>
+    <script src='@routes.Assets.at("js/plugins/dataTables/dataTables.tableTools.min.js")'></script>
+    
+    <script src='@routes.Assets.at("js/plugins/datepicker/bootstrap-datepicker.min.js")'></script>
+	<script src='@routes.Assets.at("js/plugins/datepicker/bootstrap-datepicker.zh-TW.min.js")'></script>
+	<script src='@routes.Assets.at("js/moment-with-locales.min.js")'></script>
+	<script src='@routes.Assets.at("js/plugins/datetimepicker/bootstrap-datetimepicker.min.js")'></script>
+	
+	<script src='@routes.Assets.at("js/plugins/table2excel/jquery.table2excel.min.js")'></script>
+
+	<script src='@routes.Assets.at("js/highcharts/highcharts.js")'></script>
+	<script src='@routes.Assets.at("js/highcharts/highcharts-more.js")'></script>
+	<script src='@routes.Assets.at("js/highcharts/modules/exporting.js")'></script>
+	<script src='@routes.Assets.at("js/plugins/jeditable/jquery.jeditable.js")'></script>	
+	
+	<!-- Custom and plugin javascript -->
+	<script src='@routes.Assets.at("js/inspinia.js")'></script>
+	<script src='@routes.Assets.at("js/plugins/pace/pace.min.js")'></script>	
+	<script src='@routes.Assets.at("js/plugins/slimscroll/jquery.slimscroll.min.js")'></script>    
+	<script src='@routes.Assets.at("js/plugins/iCheck/icheck.min.js")'></script>
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+        
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.1.10/vue.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js">
+    	axios.defaults.withCredentials = true
+    </script>
+            
+    <script type="text/javascript"
+      src="http://maps.googleapis.com/maps/api/js?key=AIzaSyCFuSnApEhdYSANwfU4OZ4tH902Tu3vjFI">
+    </script>
+    
+    <script src="@routes.Assets.at("js/plugins/infobox/infobox_packed.js")"></script>
+    @if(Messages.isDefinedAt("highchart_l10n.js")){
+    	<script src="@routes.Assets.at("js/l10n/"+ Messages("highchart_l10n.js"))"></script>
+    }else{
+    	<script src="@routes.Assets.at("js/l10n/highchart_default.js")"></script>
+    }
+    <script>
+    var myInterval;
+    var chartHeight=500;
+	function loadPage(url, root, title){
+		//var elem = $( this );
+		clearInterval(myInterval);
+		$("#breadcrumb-title").text(root + " > " + title);
+		document.title = title;
+		$("#wrapper-content").load(url);
+	}
+	function loadRefreshPage(url, root, title){
+		function refreshPage(){
+			$("#wrapper-content").load(url);
+		}
+		
+		clearInterval(myInterval);		
+		$("#breadcrumb-title").text(root + " > " + title);
+		document.title = title;
+		$("#wrapper-content").load(url);
+		myInterval = setInterval(refreshPage, 60 * 1000);		
+	}
+    </script>
+</head>
+
+<body class="skin-md">
+<!--New UI -->
+<div id="wrapper">
+
+<nav class="navbar-default navbar-static-side" role="navigation">
+    <div class="sidebar-collapse">
+        <ul class="nav" id="side-menu">
+            <li class="nav-header">
+                <div class="text-center" style="padding: 10px">
+                	<img alt="image" class="img-responsive" src='@routes.Assets.at("images/epa.gif")' />
+                </div>
+                <div class="text-center" style="padding: 5px 5px; background-color: Crimson; color: white;">
+                	<h3><strong>@user.name</strong></h3>
+                </div>
+            </li>
+            @if(privilege.allowedMenuRights.contains(MenuRight.RealtimeInfo)){
+            <li class="active">
+                <a href="index.html"><i class="fa fa-th-large"></i> <span class="nav-label">@Messages("menu.realtime.1")</span> <span class="fa arrow"></span></a>
+                <ul class="nav nav-second-level">
+                    <li ><a href="/">@Messages("menu.realtime.2")</a></li>
+                    <li ><a href="#" onClick="loadRefreshPage('/realtimeStatus','@Messages("menu.realtime.1")','@Messages("menu.realtime.3")')">@Messages("menu.realtime.3")</a></li>
+                    <li ><a href="#" onClick="loadPage('/realtimeTrend','@Messages("menu.realtime.1")','@Messages("menu.realtime.4")')">@Messages("menu.realtime.4")</a></li>
+                    <li ><a href="#" onClick="loadPage('/realtimeMinTrend','@Messages("menu.realtime.1")','@Messages("menu.realtime.5")')">@Messages("menu.realtime.5")</a></li>
+                </ul>
+            </li>
+            }
+            @if(privilege.allowedMenuRights.contains(MenuRight.DataQuery)){
+            <li>
+                <a href="#"><i class="fa fa-bar-chart-o"></i> <span class="nav-label">@Messages("menu.query.1")</span><span class="fa arrow"></span></a>
+                <ul class="nav nav-second-level">                
+                    <li><a href="#" onClick="loadPage('/HistoryQuery','@Messages("menu.query.1")','@Messages("menu.query.2")')">@Messages("menu.query.2")</a></li>
+                    <li><a href="#" onClick="loadPage('/HistoryTrend','@Messages("menu.query.1")','@Messages("menu.query.3")')">@Messages("menu.query.3")</a></li>
+                    <li><a href="#" onClick="loadPage('/PsiTrend','@Messages("menu.query.1")','@Messages("menu.query.4")')">@Messages("menu.query.4")</a></li>
+                    <li><a href="#" onClick="loadPage('/PsiExplain','@Messages("menu.query.1")','@Messages("menu.query.11")')">@Messages("menu.query.11")</a></li>
+                    <li><a href="#" onClick="loadPage('/CompareLastYear','@Messages("menu.query.1")','@Messages("menu.query.5")')">@Messages("menu.query.5")</a></li>
+                    <li><a href="#" onClick="loadPage('/OverLawStd','@Messages("menu.query.1")','@Messages("menu.query.6")')" >@Messages("menu.query.6")</a></li>
+                    <li><a href="#" onClick="loadPage('/EffectivePercentage','@Messages("menu.query.1")','@Messages("menu.query.7")')" >@Messages("menu.query.7")</a></li>
+                    <li><a href="#" onClick="loadPage('/WindRose ','@Messages("menu.query.1")','@Messages("menu.query.8")')" >@Messages("menu.query.8")</a></li>
+                    <li><a href="#" onClick="loadPage('/CalibrationQuery','@Messages("menu.query.1")','@Messages("menu.query.9")')">@Messages("menu.query.9")</a></li>
+                    <li><a href="#" onClick="loadPage('/Alarm','@Messages("menu.query.1")','@Messages("menu.query.10")')">@Messages("menu.query.10")</a></li>
+                    <li><a href="#" onClick="loadPage('/RealtimeEpaRecord','@Messages("menu.query.1")','@Messages("menu.sys.12")')">@Messages("menu.sys.12")</a></li>
+                </ul>
+            </li>
+            }
+            @if(privilege.allowedMenuRights.contains(MenuRight.Report)){
+            <li>
+                <a href="#"><i class="fa fa-table"></i> <span class="nav-label">@Messages("menu.report.1")</span></a>
+                <ul class="nav nav-second-level">
+                    <li><a href="#" onClick="loadPage('/report/@ReportType.MonitorReport','@Messages("menu.report.1")','@Messages("menu.report.2")')">@Messages("menu.report.2")</a></li>
+                    <li><a href="#" onClick="loadPage('/epaCompare','@Messages("menu.report.1")','@Messages("menu.report.3")')">@Messages("menu.report.3")</a></li>
+                    <li><a href="#" onClick="loadPage('/CalibrationReportForm','@Messages("menu.report.1")','@Messages("menu.report.4")')">@Messages("menu.report.4")</a></li>
+                    <li><a href="#" onClick="loadPage('/PsiQuery','@Messages("menu.report.1")','@Messages("menu.report.5")')">@Messages("menu.report.5")</a></li>
+                    <li><a href="#" onClick="loadPage('/EffectiveQuery','@Messages("menu.report.1")','@Messages("menu.report.6")')">@Messages("menu.report.6")</a></li>
+                    <li><a href="#" onClick="loadPage('/report/@ReportType.MonthlyHourReport', '@Messages("menu.report.1")','@Messages("menu.report.7")')">@Messages("menu.report.7")</a></li>
+                    <li><a href="#" onClick="loadPage('/MonitorAbnormal','@Messages("menu.report.1")','@Messages("menu.report.8")')">@Messages("menu.report.8")</a></li>
+                    <li><a href="#" onClick="loadPage('/MonitorAggregate','@Messages("menu.report.1")','@Messages("menu.report.9")')">@Messages("menu.report.9")</a></li>                                     
+                </ul>
+            </li>
+            }
+            @if(privilege.allowedMenuRights.contains(MenuRight.Statistics)){
+            <li>
+                <a href="#"><i class="fa fa-university"></i> <span class="nav-label">@Messages("menu.stat.1")</span><span class="fa arrow"></span></a>
+                <ul class="nav nav-second-level">
+                    <li><a href="#" onClick="loadPage('/CalculateStat','@Messages("menu.stat.1")','@Messages("menu.stat.2")')">@Messages("menu.stat.2")</a></li>
+                    <li><a href="#" onClick="loadPage('/AuditedQuery','@Messages("menu.stat.1")','@Messages("menu.stat.3")')">@Messages("menu.stat.3")</a></li>
+                    <li><a href="#" onClick="loadPage('/Regression','@Messages("menu.stat.1")','@Messages("menu.stat.4")')">@Messages("menu.stat.4")</a></li>
+                </ul>
+            </li>
+            }
+            @if(user.isAdmin && privilege.allowedMenuRights.contains(MenuRight.SystemManagement)){
+            <li>
+                <a href="#"><i class="fa fa-desktop"></i> <span class="nav-label">@Messages("menu.sys.1")</span></a>
+                <ul class="nav nav-second-level">
+                	<li><a href="#" onClick="loadPage('/MonitorStatusConfig','@Messages("menu.sys.1")','@Messages("menu.sys.2")')">@Messages("menu.sys.2")</a></li>                    
+                    <li><a href="#" onClick="loadPage('/MonitorTypeConfig','@Messages("menu.sys.1")','@Messages("menu.sys.3")')">@Messages("menu.sys.3")</a></li>
+                    <li><a href="#" onClick="loadPage('/Monitor','@Messages("menu.sys.1")','@Messages("menu.sys.4")')">@Messages("menu.sys.4")</a></li>
+                    <li><a href="#" onClick="loadPage('/Instrument','@Messages("menu.sys.1")','@Messages("menu.sys.5")')">@Messages("menu.sys.5")</a></li>
+                    <li><a href="#" onClick="loadPage('/AuditConfig','@Messages("menu.sys.1")','@Messages("menu.sys.6")')">@Messages("menu.sys.6")</a></li>
+                    <li><a href="#" onClick="loadPage('/ManualAudit','@Messages("menu.sys.1")','@Messages("menu.sys.7")')">@Messages("menu.sys.7")</a></li>
+                    <li><a href="#" onClick="loadPage('/ManualAuditQuery','@Messages("menu.sys.1")','@Messages("menu.sys.8")')">@Messages("menu.sys.8")</a></li>
+                    <li><a href="#" onClick="loadPage('/GroupManagement','@Messages("menu.sys.1")','@Messages("menu.sys.9")')">@Messages("menu.sys.9")</a></li>                   
+                    <li><a href="#" onClick="loadPage('/UserManagement','@Messages("menu.sys.1")','@Messages("menu.sys.10")')">@Messages("menu.sys.10")</a></li>
+                    <li><a href="#" onClick="loadPage('/RecordValidation','@Messages("menu.sys.1")','@Messages("menu.sys.11")')">@Messages("menu.sys.11")</a></li>
+                    <li><a href="#" onClick="loadPage('/InstrumentCmdView','@Messages("menu.sys.1")','@Messages("menu.sys.14")')">@Messages("menu.sys.14")</a></li>                    
+                 </ul>
+            </li>
+            }
+            @if(privilege.allowedMenuRights.contains(MenuRight.RepartMaintance)){
+            <li>
+            	<a href="#"><i class="fa fa-tasks"></i> <span class="nav-label">@Messages("menu.ma.1")</span></a>
+            	<ul class="nav nav-second-level">
+            		<li>
+                    	<a href="#">@Messages("menu.ma.2")<span class="fa arrow"></span></a>
+                            <ul class="nav nav-third-level">
+                                <li>
+                                    <a href="#" onClick="loadPage('/NewTicket','@Messages("menu.ma.1")','@Messages("menu.ma.3")')">@Messages("menu.ma.3")</a>
+                                </li>
+                                <li>
+                                    <a href="#" onClick="loadPage('/QueryTicket','@Messages("menu.ma.1")','@Messages("menu.ma.4")')">@Messages("menu.ma.4")</a>
+                                </li>
+                                <li>
+                                    <a href="#" onClick="loadPage('/CloseTicket','@Messages("menu.ma.1")','@Messages("menu.ma.5")')">@Messages("menu.ma.5")</a>
+                                </li>
+                            </ul>
+                        </li>
+            		<li><a href="#" onClick="loadPage('/MyTicket','@Messages("menu.ma.1")','@Messages("menu.ma.6")')">@Messages("menu.ma.6")</a></li>
+            		<li><a href="#" onClick="loadPage('/EquipmentHistory','@Messages("menu.ma.1")','@Messages("menu.ma.7")')">@Messages("menu.ma.7")</a></li>
+            		<li><a href="#" onClick="loadPage('/MonitorJournal','@Messages("menu.ma.1")','@Messages("menu.ma.8")')">@Messages("menu.ma.8")</a></li>
+            		<li><a href="#" onClick="loadPage('/EquipmentManagement','@Messages("menu.ma.1")','@Messages("menu.ma.9")')">@Messages("menu.ma.9")</a></li>
+            		<li><a href="#" onClick="loadPage('/PartManagement','@Messages("menu.ma.1")','@Messages("menu.ma.10")')">@Messages("menu.ma.10")</a></li>
+            	<!-- 
+					<li><a href="#" onClick="loadPage('/DownloadNotification','@Messages("menu.ma.1")','@Messages("menu.ma.12")')">@Messages("menu.ma.12")</a></li>
+				-->
+					<li><a href="#" onClick="loadPage('/MaintanceSchedule','@Messages("menu.ma.1")','@Messages("menu.ma.13")')">@Messages("menu.ma.13")</a></li>					            		             		           		
+            	</ul>
+            </li>
+          }
+        </ul>
+
+    </div>
+</nav>
+
+<div id="page-wrapper" class="gray-bg">
+<div class="row border-bottom">
+    <nav class="navbar navbar-static-top" role="navigation" style="margin-bottom: 0">
+        <div class="navbar-header">
+        	<span style="display:inline">
+        		<a class="navbar-minimalize minimalize-styl-2 btn btn-primary " href="#"><i class="fa fa-bars"></i> </a>
+				
+            	<img src='@routes.Assets.at("images/title.png")' width='70%' height='70%'>
+				
+        	</span>            
+        </div>
+        <ul class="nav navbar-top-links navbar-right">
+            <li id="alertButton" class="dropdown">
+                <a class="dropdown-toggle count-info" data-toggle="dropdown" href="#">
+                    <i class="fa fa-bell"></i>  <span id="alert_count" class="label label-danger"></span>
+                </a>
+                <ul id="alert_list" class="dropdown-menu dropdown-alerts">
+                    <li class="divider"></li>
+                    <li id="alarmQuery">
+                        <div class="text-center link-block">
+                            <a href="#" onClick="loadPage('/Alarm','@Messages("menu.query.1")','@Messages("menu.query.10")')">
+                                <strong>@Messages("menu.query.10")</strong>
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        </div>
+                    </li>
+                </ul>
+            </li>
+
+            <li>
+                <a href="/logout">
+                    <i class="fa fa-sign-out"></i>@Messages("menu.logout")
+                </a>
+            </li>
+        </ul>
+
+    </nav>
+</div>
+<div class="row wrapper border-bottom white-bg">
+    <div class="col-lg-10">		
+        <h3 id='breadcrumb-title'>@Messages("menu.realtime.1") &gt @Messages("menu.realtime.2")</h3>		
+    </div>
+</div>
+
+<div class="wrapper wrapper-content animated fadeInRight" id="wrapper-content">
+@content
+</div>
+
+
+
+</div>
+</div>
+<script>
+	var userId = '@user.id';
+	var n_url = '@routes.Realtime.alarmNofificationSocket().webSocketURL()';
+</script>
+<script>
+	var nAlert = 0;
+	var nSocket;
+	var alertBuffer = [];
+	function removeOldAlerts(){
+		while(alertBuffer.length > 10){
+			alertBuffer.shift();
+		}
+	}
+	
+	function updateAlertCount(){
+		$alert_count = $('#alert_count');
+		if(nAlert == 0)
+			$alert_count.text('');
+		else
+			$alert_count.text(nAlert);
+	}
+	
+	nSocket = new WebSocket(n_url);
+	nSocket.onmessage = function(evt){
+		var cmd = evt.data.split("!");
+		if(cmd[0] == "alert"){	
+			nAlert++;
+			var $firstItem = $('#alert_list li:first');
+			var item = "<li style='Color:Blue'>" + cmd[1] + "</li>";
+			$firstItem.before(item);
+			alertBuffer.push(item);		
+			updateAlertCount();
+		}
+	}
+	
+	nSocket.onopen = function(evt){
+		console.log("Connection open...");
+		nSocket.send("start:" + userId);
+	}
+	nSocket.onclose = function(evt){
+		console.log("Connection closed.");
+	}
+	nSocket.onerror = function(evt){
+		console.log("Error!");
+		nSocket.close();
+	}
+
+	$('#alertButton').on('shown.bs.dropdown', function () {
+		nAlert = 0;
+		updateAlertCount();
+	})
+	var $alarmQueryLi = $('#alarmQuery').html();
+	$('#alertButton').on('hidden.bs.dropdown', function () {
+		var $alertList = $('#alert_list');		
+		$alertList.empty();
+		removeOldAlerts();
+		for(var i=alertBuffer.length-1;i>=0;i--){
+			$alertList.append(alertBuffer[i]);
+		}
+		
+		$alertList.append('<li class="divider"></li>');
+		$alertList.append($alarmQueryLi);
+	})
+		 
+	updateAlertCount();
+</script>
+</body>
+
+</html>

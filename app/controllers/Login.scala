@@ -1,0 +1,47 @@
+package controllers
+
+import play.api._
+import play.api.mvc._
+import play.api.libs.json._
+import play.api.libs.functional.syntax._
+import play.api.Logger
+import models.User
+import javax.inject._
+import play.api.i18n._
+
+case class Credential(account: String, password: String)
+
+/**
+ * @author user
+ */
+class Login @Inject()(val messagesApi: MessagesApi) extends Controller with I18nSupport{
+  implicit val credentialReads = Json.reads[Credential]    
+        
+  def authenticate = Action(BodyParsers.parse.json){
+    implicit request =>
+      val credentail = request.body.validate[Credential]      
+      credentail.fold(
+          error=>{
+            BadRequest(Json.obj("ok"->false, "msg"->JsError.toJson(error).toString()))
+          }, 
+          crd=>{
+            val optUser = User.getUserByEmail(crd.account)
+            if(optUser.isEmpty || optUser.get.password != crd.password)
+              Ok(Json.obj("ok"->false, "msg"->Messages("login.error")))
+            else {
+              val user = optUser.get
+              import Security._
+              val userInfo = UserInfo(user.id.get, user.name, user.isAdmin, user.groupID)
+              Ok(Json.obj("ok"->true)).withSession(Security.setUserinfo(request, userInfo))              
+            }              
+          })
+  }
+  
+  def prompt = Action{
+    Ok(views.html.login())
+  }
+  
+  def logout = Action{
+    Redirect(routes.Login.prompt()).withNewSession
+  }
+}
