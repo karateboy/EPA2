@@ -42,8 +42,8 @@ object Record {
   case class HourRecord(
       monitor: String,
       date: Timestamp,
-      chk: Option[String]=None,
-      dataList: Seq[MtRecord]=Seq.empty[MtRecord]) {
+      chk: Option[String] = None,
+      dataList: Seq[MtRecord] = Seq.empty[MtRecord]) {
 
     def save(tab: TableType.Value) {
       val tab_name = Record.getTabName(tab)
@@ -51,22 +51,30 @@ object Record {
 
       DB localTx { implicit session =>
         sql"""
-          INSERT INTO $tab_name
-           ([DP_NO]
-           ,[M_DateTime]
-           ,[CHK]
-           ,[dataList]
-           )
-          VALUES
-           ($monitor
-           ,$date
-           ,$chk
-           ,${Json.toJson(dataList).toString}
-           )
+          IF NOT EXISTS (SELECT * FROM $tab_name WHERE DP_NO = $monitor and M_DateTime = $date)
+            INSERT INTO $tab_name
+             ([DP_NO], [M_DateTime], [CHK], [dataList])
+            VALUES
+           ($monitor, $date, $chk, ${Json.toJson(dataList).toString})
+          ELSE
+            UPDATE $tab_name
+            SET dataList = ${Json.toJson(dataList).toString}
+            WHERE DP_NO = $monitor and M_DateTime = $date
             """.update.apply
       }
     }
 
+    def valueMap = {
+      val pairSeq = dataList map {
+        mtRecord =>
+          val mt = MonitorType.withName(mtRecord.mtName)
+          val value = (Some(mtRecord.value.toFloat):Option[Float], Some(mtRecord.status):Option[String])
+          mt -> value
+      }
+
+      pairSeq.toMap
+    }
+    
     def recordMap = {
       val pairSeq = dataList map {
         mtRecord =>
@@ -74,7 +82,13 @@ object Record {
           val value = (Some(mtRecord.value.toFloat), Some(mtRecord.status))
           mt -> value
       }
-      pairSeq.toMap
+
+      val valueMap = pairSeq.toMap
+      def optMap(mt: MonitorType.Value) = {
+        val valueMap = pairSeq.toMap
+        valueMap.getOrElse(mt, (None, None))
+      }
+      optMap _
     }
   }
 
@@ -203,11 +217,11 @@ object Record {
 
   def secRecordProject(mt: MonitorType.Value) =
     (rs: SixSecRecord) => {
-      assert(mt == MonitorType.withName("C211") || mt == MonitorType.withName("C212"))
+      assert(mt == MonitorType.C211 || mt == MonitorType.C212)
       val start = rs.time
       val values =
         for (i <- 0 to 9) yield {
-          if (mt == MonitorType.withName("C211")) {
+          if (mt == MonitorType.C211) {
             (start + (6 * i).second, (rs.winSpeed(i), rs.winSpeed_stat(i)))
           } else {
             (start + (6 * i).second, (rs.winDir(i), rs.winDir_stat(i)))
@@ -221,8 +235,8 @@ object Record {
   }
 
   def monitorTypeProject2(mt: MonitorType.Value) = {
-    def projection(hr:HourRecord)={
-      hr.recordMap.getOrElse(mt, (None, None))
+    def projection(hr: HourRecord) = {
+      hr.recordMap(mt)
     }
     projection _
   }
@@ -233,45 +247,6 @@ object Record {
     val tab_name = getTabName(tabType)
     Logger.warn("FIXME updateRecordStatus()")
   }
-
-  /*
-  = Map(
-    MonitorType.A213 -> (rs => (rs.tsp, rs.tsp_stat)),
-    MonitorType.A214 -> (rs => (rs.pm10, rs.pm10_stat)),
-    MonitorType.A215 -> (rs => (rs.pm25, rs.pm25_stat)),
-    MonitorType.withName("A221") -> (rs => (rs.s, rs.s_stat)),
-    MonitorType.withName("A222") -> (rs => (rs.so2, rs.so2_stat)),
-    MonitorType.withName("A223") -> (rs => (rs.nox, rs.nox_stat)),
-    MonitorType.withName("A224") -> (rs => (rs.co, rs.co_stat)),
-    MonitorType.withName("A225") -> (rs => (rs.o3, rs.o3_stat)),
-    MonitorType.withName("A226") -> (rs => (rs.thc, rs.thc_stat)),
-    MonitorType.withName("A229") -> (rs => (rs.ammonia, rs.ammonia_stat)),
-    MonitorType.withName("A232") -> (rs => (rs.noy, rs.noy_stat)),
-    MonitorType.withName("A233") -> (rs => (rs.noy_no, rs.noy_no_stat)),
-    MonitorType.withName("A235") -> (rs => (rs.nh3, rs.nh3_stat)),
-    MonitorType.withName("A283") -> (rs => (rs.no, rs.no_stat)),
-    MonitorType.withName("A286") -> (rs => (rs.ch4, rs.ch4_stat)),
-    MonitorType.withName("A288") -> (rs => (rs.monitor_humid, rs.monitor_humid_stat)),
-    MonitorType.withName("A289") -> (rs => (rs.monitor_temp, rs.monitor_temp_stat)),
-    MonitorType.withName("A293") -> (rs => (rs.no2, rs.no2_stat)),
-    MonitorType.withName("A296") -> (rs => (rs.nmhc, rs.nmhc_stat)),
-    MonitorType.withName("C211") -> (rs => (rs.wind_speed, rs.wind_speed_stat)),
-    MonitorType.withName("C212") -> (rs => (rs.wind_dir, rs.wind_dir_stat)),
-    MonitorType.withName("C213") -> (rs => (rs.rain, rs.rain_stat)),
-    MonitorType.withName("C214") -> (rs => (rs.temp, rs.temp_stat)),
-    MonitorType.withName("C215") -> (rs => (rs.humid, rs.humid_stat)),
-    MonitorType.withName("C216") -> (rs => (rs.air_pressure, rs.air_pressure_stat)),
-
-    //New MT
-    MonitorType.withName("A242") -> (rs => (rs.noy_dif, rs.noy_dif_stat)),
-    MonitorType.withName("A236") -> (rs => (rs.nh3_nt, rs.nh3_nt_stat)),
-    MonitorType.withName("A237") -> (rs => (rs.nh3_nox, rs.nh3_nox_stat)),
-    MonitorType.withName("A238") -> (rs => (rs.nh3_no, rs.nh3_no_stat)),
-    MonitorType.withName("A239") -> (rs => (rs.nh3_no2, rs.nh3_no2_stat)),
-    MonitorType.withName("A244") -> (rs => (rs.h2s_cs, rs.h2s_cs_stat)),
-    MonitorType.withName("A245") -> (rs => (rs.h2s_so2, rs.h2s_so2_stat)),
-    MonitorType.withName("A234") -> (rs => (rs.h2s, rs.h2s_stat)))
-*/
 
   def emptyRecord(monitor: String, start: DateTime) = {
     HourRecord(
@@ -665,7 +640,7 @@ object Record {
       //Record.monitorTypeProject2(monitorType)
       records.map { r =>
         val mtValue = Record.monitorTypeProject2(monitorType)(r)._1
-        val wind_dir = r.recordMap.getOrElse(MonitorType.C212, (Some(0f), Some(MonitorStatus.NORMAL_STAT)))._1
+        val wind_dir = r.recordMap(MonitorType.C212)._1
         (wind_dir, mtValue)
       }
     } else {

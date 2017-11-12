@@ -191,6 +191,6 @@ object MonitorBios {
   )
  
   val map = Map(
-      Monitor.withName("A013")->A013
+      Monitor.withName("A001")->A001
       )
 }

@@ -3,7 +3,7 @@
 @import com.github.nscala_time.time.Imports._
 @import MonitorStatus._
 
-@(rt_status: Map[Monitor.Value, Map[MonitorType.Value, (Option[Float], Option[String])]], privilege: Privilege)(implicit messages:Messages)
+@(rt_status: Map[Monitor.Value, MonitorType.Value=>(Option[Float], Option[String])], privilege: Privilege)(implicit messages:Messages)
 <table id="reportTable" class="table" cellspacing="0" width="100%">
 	<thead>
 		<tr>			  

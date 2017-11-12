@@ -103,7 +103,7 @@ GET      /CalibrationQueryReport/:monitor/:start/:end                           
 GET      /PDF/CalibrationQueryReport/:monitor/:start/:end                                      controllers.Query.calibrationQueryReport(monitor, start, end, outputTypeStr="pdf")
 GET      /Excel/CalibrationQueryReport/:monitor/:start/:end                                    controllers.Query.calibrationQueryReport(monitor, start, end, outputTypeStr="excel")
 
-GET      /Monitor                                                                              controllers.Application.monitor(monitor = "A013")
+GET      /Monitor                                                                              controllers.Application.monitor(monitor = "A001")
 GET      /Monitor/:monitor                                                                     controllers.Application.monitor(monitor)
 GET      /MonitorInfo/:monitor                                                                 controllers.Application.getMonitorInfo(monitor)
 GET      /MonitorBios/:monitor                                                                 controllers.Application.getMonitorBios(monitor)

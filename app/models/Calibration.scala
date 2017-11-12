@@ -78,7 +78,7 @@ object Calibration {
 
   def mapper(rs: WrappedResultSet) = {
     val monitor = Monitor.withName(rs.string(1))
-    val monitorType = MonitorType.withName(rs.string(2).replace("A4", "A2"))
+    val monitorType = MonitorType.withName(rs.string(2))
     val startTime = rs.timestamp(3)
     val endTime = rs.timestamp(4)
     val span = rs.floatOpt(5)
@@ -223,7 +223,7 @@ object Calibration {
       case A221 => "TS"
       case A286 => "CH4"
       case A296 => "NMHC"
-      case A235 => "NH3"
+      case A229 => "NH3"
       case A213 => "TSP"
       case A214 => "PM10"
       case A215 => "PM25"

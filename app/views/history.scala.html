@@ -136,7 +136,7 @@ $( document ).ready(function() {
 		var $monitorTypes = $("input[name='monitorType']");
 		for(var i=0;i<$monitorTypes.length;i++){
 			var $mt = $monitorTypes.eq(i);
-			if($mt.attr('id') != 'C211' && $mt.attr('id') != 'C212'){
+			if($mt.attr('id') != 'WD_SPEED' && $mt.attr('id') != 'WD_DIR'){
 				$mt.prop('disabled', true);
 				$mt.prop('checked', false);
 				$mt.parent().removeClass("active");

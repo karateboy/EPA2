@@ -16,7 +16,7 @@ class AuditStat(hr: HourRecord) {
   val name = hr.monitor
   val date = hr.date
   var chk = hr.chk
-  var map = hr.recordMap
+  var map = hr.valueMap
   
   def getStat(mt: MonitorType.Value) = {
     map(mt)._2
@@ -24,7 +24,7 @@ class AuditStat(hr: HourRecord) {
 
   def setStat(mt: MonitorType.Value, stat: String){
     val v_s = map(mt)
-    val pair = mt->(v_s._1, Some(stat))
+    val pair = mt->(v_s._1, Some(stat):Option[String])
     map = map + pair
   }
 
