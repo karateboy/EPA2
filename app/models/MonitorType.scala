@@ -8,7 +8,7 @@ import EnumUtils._
 import play.api.libs.json._
 import ModelHelper._
 
-case class MonitorType(id: String, unit: String,
+case class MonitorType(id: String, default_desp: String, unit: String,
                        std_internal_default: Option[Float], std_law: Option[Float], std_hour: Option[Float],
                        std_day: Option[Float], std_year: Option[Float],
                        zd_internal: Option[Float], zd_law: Option[Float],
@@ -19,7 +19,10 @@ case class MonitorType(id: String, unit: String,
 
   def desp(implicit messages: Messages) = {
     val key = s"mt.$id"
-    Messages(key)
+    if (Messages.isDefinedAt(key))
+      Messages(key)
+    else
+      default_desp
   }
 }
 
@@ -28,6 +31,7 @@ object MonitorType extends Enumeration {
   implicit val mtWrites: Writes[MonitorType.Value] = EnumUtils.enumWrites
 
   def mapper(r: WrappedResultSet) = MonitorType(id = r.string(1),
+    default_desp = r.string(2),
     unit = r.string(3),
     std_internal_default = r.floatOpt(5),
     std_law = r.floatOpt(6),
@@ -83,7 +87,10 @@ object MonitorType extends Enumeration {
   def realtimeList = {
     var mtSet = Set.empty[MonitorType.Value]
     for (m <- Monitor.mvList) {
-      mtSet = mtSet.union(Monitor.map(m).monitorTypes.toSet)
+      mtSet = mtSet.union{
+          val normalMtv = Monitor.map(m).monitorTypes.filter { mt => !MonitorType.map(mt).id.startsWith("_") }
+          normalMtv.toSet
+      }
     }
 
     mtSet.toList.sortBy {
@@ -96,10 +103,9 @@ object MonitorType extends Enumeration {
       val updateValue =
         if (newValue == "-")
           None
-        else if(colname.equalsIgnoreCase("DESP")||colname.equalsIgnoreCase("UNIT")){
+        else if (colname.equalsIgnoreCase("DESP") || colname.equalsIgnoreCase("UNIT")) {
           Some(newValue)
-        }else
-        {
+        } else {
           import java.lang.Float
           val v = Float.parseFloat(newValue)
           Some(v)
@@ -153,18 +159,11 @@ object MonitorType extends Enumeration {
   val C216 = MonitorType.withName("PRESS")
   //New Mt
 
-
   val psiList = List(A214, A222, A224, A225, A293)
   val windDirList = List(MonitorType.withName("WD_DIR"))
 
-  /*  val monitorReportList = 
-    List(A222, A223, A293, A283, A224, A225, A226, A286, A296, A229, A232, A233, A235, A221,
-        A213, A214, A215,        
-        C211, C212, C214, C215, C216, C213)
-  */
-
   val monitorReportList =
-    List(A222, A223, A293, A283, A224, A225, A226, A286, A296, A229, A232, A233, A234, 
+    List(A222, A223, A293, A283, A224, A225, A226, A286, A296, A229, A232, A233, A234,
       A221, A213, A214, A215,
       C211, C212, C214, C215, C216, C213)
 

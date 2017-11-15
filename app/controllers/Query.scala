@@ -1,12 +1,10 @@
 package controllers
 import play.api._
 import play.api.mvc._
-import play.api.Logger
 import models._
 import com.github.nscala_time.time.Imports._
-import models.ModelHelper._
+import ModelHelper._
 import play.api.libs.json._
-import play.api.libs.functional.syntax._
 import PdfUtility._
 import models.MonitorStatusFilter
 import java.nio.file.Files
@@ -30,6 +28,8 @@ case class OverLawStdEntry(monitor: Monitor.Value, mt: MonitorType.Value, time: 
 case class PeriodStat(avg: Float, min: Float, max: Float, sd: Float, minDate: DateTime, maxDate: DateTime)
 
 object Query {
+  val epa_compare = Play.current.configuration.getBoolean("epa_compare").getOrElse(true)
+  
   def trendHelper(monitors: Array[Monitor.Value], epaMonitors: Array[EpaMonitor.Value],
                   monitorTypes: Array[MonitorType.Value], reportUnit: ReportUnit.Value, monitorStatusFilter: MonitorStatusFilter.Value,
                   start: DateTime, end: DateTime)(implicit messages: Messages, request: RequestHeader) = {
@@ -362,7 +362,7 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
     implicit request =>
       val userInfo = Security.getUserinfo(request).get
       val group = Group.getGroup(userInfo.groupID).get
-      Ok(views.html.history("/HistoryQueryReport/" + false.toString + "/", group.privilege))
+      Ok(views.html.history("/HistoryQueryReport/" + false.toString + "/", group.privilege, epa_compare, false))
   }
 
   def auditedQuery() = Security.Authenticated {
@@ -485,7 +485,7 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
     implicit request =>
       val userInfo = Security.getUserinfo(request).get
       val group = Group.getGroup(userInfo.groupID).get
-      Ok(views.html.historyTrend(group.privilege))
+      Ok(views.html.historyTrend(epa_compare, group.privilege))
   }
 
   def historyTrendChart(monitorStr: String, epaMonitorStr: String, monitorTypeStr: String,

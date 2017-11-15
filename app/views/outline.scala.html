@@ -1,5 +1,5 @@
 @* outline Template File *@
-@(title: String, user:controllers.Security.UserInfo, privilege: Privilege, content:Html)(implicit request: RequestHeader, messages: Messages)
+@(title: String, user:controllers.Security.UserInfo, epa_compare:Boolean, privilege: Privilege, content:Html)(implicit request: RequestHeader, messages: Messages)
 <!DOCTYPE html>
 <html>
 
@@ -151,7 +151,6 @@
                     <li><a href="#" onClick="loadPage('/WindRose ','@Messages("menu.query.1")','@Messages("menu.query.8")')" >@Messages("menu.query.8")</a></li>
                     <li><a href="#" onClick="loadPage('/CalibrationQuery','@Messages("menu.query.1")','@Messages("menu.query.9")')">@Messages("menu.query.9")</a></li>
                     <li><a href="#" onClick="loadPage('/Alarm','@Messages("menu.query.1")','@Messages("menu.query.10")')">@Messages("menu.query.10")</a></li>
-                    <li><a href="#" onClick="loadPage('/RealtimeEpaRecord','@Messages("menu.query.1")','@Messages("menu.sys.12")')">@Messages("menu.sys.12")</a></li>
                 </ul>
             </li>
             }
@@ -160,7 +159,9 @@
                 <a href="#"><i class="fa fa-table"></i> <span class="nav-label">@Messages("menu.report.1")</span></a>
                 <ul class="nav nav-second-level">
                     <li><a href="#" onClick="loadPage('/report/@ReportType.MonitorReport','@Messages("menu.report.1")','@Messages("menu.report.2")')">@Messages("menu.report.2")</a></li>
-                    <li><a href="#" onClick="loadPage('/epaCompare','@Messages("menu.report.1")','@Messages("menu.report.3")')">@Messages("menu.report.3")</a></li>
+                    @if(epa_compare){
+                    	<li><a href="#" onClick="loadPage('/epaCompare','@Messages("menu.report.1")','@Messages("menu.report.3")')">@Messages("menu.report.3")</a></li>
+                    }
                     <li><a href="#" onClick="loadPage('/CalibrationReportForm','@Messages("menu.report.1")','@Messages("menu.report.4")')">@Messages("menu.report.4")</a></li>
                     <li><a href="#" onClick="loadPage('/PsiQuery','@Messages("menu.report.1")','@Messages("menu.report.5")')">@Messages("menu.report.5")</a></li>
                     <li><a href="#" onClick="loadPage('/EffectiveQuery','@Messages("menu.report.1")','@Messages("menu.report.6")')">@Messages("menu.report.6")</a></li>
@@ -239,9 +240,9 @@
         <div class="navbar-header">
         	<span style="display:inline">
         		<a class="navbar-minimalize minimalize-styl-2 btn btn-primary " href="#"><i class="fa fa-bars"></i> </a>
-				
+				<!-- 
             	<img src='@routes.Assets.at("images/title.png")' width='70%' height='70%'>
-				
+				 -->
         	</span>            
         </div>
         <ul class="nav navbar-top-links navbar-right">

@@ -38,7 +38,8 @@ case class EpaRealtimeData(
   publishTime: String)
 
 class Application @Inject() (val messagesApi: MessagesApi) extends Controller with I18nSupport {
-
+  val epa_compare = Play.current.configuration.getBoolean("epa_compare").getOrElse(true)
+  
   def index = Security.Authenticated {
     implicit request =>
       val userInfoOpt = Security.getUserinfo(request)
@@ -48,7 +49,7 @@ class Application @Inject() (val messagesApi: MessagesApi) extends Controller wi
         val userInfo = userInfoOpt.get
         val user = User.getUserById(userInfo.id).get
         val group = Group.getGroup(userInfo.groupID).get
-        Ok(views.html.index(Messages("system.name"), user, userInfo, group.privilege))
+        Ok(views.html.index(Messages("system.name"), user, userInfo, epa_compare, group.privilege))
       }
   }
 
@@ -507,7 +508,7 @@ class Application @Inject() (val messagesApi: MessagesApi) extends Controller wi
     implicit request =>
       val userInfo = Security.getUserinfo(request).get
       val group = Group.getGroup(userInfo.groupID).get
-      Ok(views.html.history("/HistoryQueryReport/true/", group.privilege, true))
+      Ok(views.html.history("/HistoryQueryReport/true/", group.privilege, epa_compare, true))
   }
 
   case class ManualAudit(monitor: Monitor.Value, monitorType: MonitorType.Value, time: Long, status: String, reason: Option[String])

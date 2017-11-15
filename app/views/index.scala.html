@@ -1,3 +1,3 @@
-@(title: String, user:User, userInfo:controllers.Security.UserInfo, privilege: Privilege)(implicit request: RequestHeader, messages: Messages)
+@(title: String, user:User, userInfo:controllers.Security.UserInfo, epa_compare:Boolean, privilege: Privilege)(implicit request: RequestHeader, messages: Messages)
 
-@outline(title, userInfo, privilege, dashboard(user, privilege))
+@outline(title, userInfo, epa_compare, privilege, dashboard(user, privilege))
