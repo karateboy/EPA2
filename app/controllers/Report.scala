@@ -19,9 +19,11 @@ import play.api.i18n._
 object PeriodReport extends Enumeration {
   val DailyReport = Value("daily")
   val MonthlyReport = Value("monthly")
-  val MinMonthlyReport = Value("MinMonthly")
+  //val MinMonthlyReport = Value("MinMonthly")
   val YearlyReport = Value("yearly")
-  def map = Map(DailyReport -> "日報", MonthlyReport -> "月報", MinMonthlyReport -> "分鐘月報", YearlyReport -> "年報")
+  def map = Map(DailyReport -> "日報", MonthlyReport -> "月報", 
+      /*MinMonthlyReport -> "分鐘月報", */
+      YearlyReport -> "年報")
 }
 
 object ReportType extends Enumeration {
