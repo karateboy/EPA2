@@ -473,9 +473,8 @@ object ExcelUtility {
         for {
           (mt, mt_i) <- MonitorType.monitorReportList.zipWithIndex if(mtDayReportMap.contains(mt))
           mtDayReport = mtDayReportMap(mt)
-          dataI <- mtDayReport.dataList.zipWithIndex
+          (data, idx) <- mtDayReport.dataList.zipWithIndex
         } {
-          val (data, idx) = dataI
           if (data._2.isDefined && data._3.isDefined && MonitorStatus.isValid(data._3.get)) {
             if (sheet.getRow(row_start + idx) == null)
               sheet.createRow(row_start + idx).createCell(mt_i + 1).setCellValue(data._2.get)
