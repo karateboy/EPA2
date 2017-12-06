@@ -105,7 +105,7 @@ object Report {
 
         if (count != 0) {
           val avg = if (MonitorType.windDirList.contains(mt)) {
-            val (windSpeed_mt, windSpeed_mti) = MonitorType.monitorReportList.zipWithIndex.find(t => t._1 == MonitorType.C212).get
+            val (windSpeed_mt, windSpeed_mti) = MonitorType.monitorReportList.zipWithIndex.find(t => t._1 == MonitorType.WD_DIR).get
             val windSeed = getHourRecord(windSpeed_mti, hour)
             val windDir = hourRecord
             windAvg(windSeed, windDir)
@@ -162,7 +162,7 @@ object Report {
           if (count >= 20) {
             val avg = if (MonitorType.windDirList.contains(monitorType)) {
               val windDir = validData
-              val (windSpeedMt, windSpeedPos) = includeTypes.zipWithIndex.find(t => t._1 == MonitorType.C211).get
+              val (windSpeedMt, windSpeedPos) = includeTypes.zipWithIndex.find(t => t._1 == MonitorType.WD_SPEED).get
               val windSpeed = getTypeStat(windSpeedPos).filter { _.count != 0 }
               val wind = windSpeed.zip(windDir).filter(p => p._1.avg.isDefined && p._2.avg.isDefined)
               val wind_sin = wind.map(v => v._1.avg.get * Math.sin(Math.toRadians(v._2.avg.get))).sum
@@ -196,7 +196,7 @@ object Report {
       } yield {
         MonitorTypeReport(monitorType, List(typeStat), typeStat)
       }
-    IntervalReport(typeReport)
+    IntervalReport(typeReport.toArray)
   }
 
   def adjustWeekDay(date: DateTime) = {
@@ -373,7 +373,7 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
         }
       val windSpeedDailyReports =
         for { day <- days } yield {
-          Record.getDailyReport(monitor, day, List(MonitorType.C211))
+          Record.getDailyReport(monitor, day, List(MonitorType.WD_SPEED))
         }
 
       def getMonthHourStats(mt: MonitorType.Value) = {
@@ -496,7 +496,7 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
             val overallStat =
               if (count != 0) {
                 val avg = if (MonitorType.windDirList.contains(monitorType)) {
-                  val (windSpeedMt, windSpeed_pos) = MonitorType.monitorReportList.zipWithIndex.find(t => t._1 == MonitorType.C211).get
+                  val (windSpeedMt, windSpeed_pos) = MonitorType.monitorReportList.zipWithIndex.find(t => t._1 == MonitorType.WD_SPEED).get
                   val windSpeed = getTypeStat(windSpeed_pos)
                   val windDir = typeStat
                   val wind = windSpeed.zip(windDir).filter(t => t._1.count != 0 && t._2.count != 0)
@@ -551,9 +551,6 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
         val (title, excelFile) =
           reportType match {
             case PeriodReport.DailyReport =>
-              //val dailyReport = Record.getDailyReport(monitor, startTime)
-              //("日報" + startTime.toString("YYYYMMdd"), ExcelUtility.createDailyReport(monitor, startTime, dailyReport))
-
               ("日報" + startTime.toString("YYYYMMdd"), ExcelUtility.createAllDailyReport(monitor, startTime))
 
             case PeriodReport.MonthlyReport =>

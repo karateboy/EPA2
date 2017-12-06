@@ -66,14 +66,14 @@ case class CompareRule(
       return false
 
     var invalid = false
-    val thc_rec = Record.monitorTypeProject2(A226)(record)
-    val ch4_rec = Record.monitorTypeProject2(A286)(record)
+    val thc_rec = Record.monitorTypeProject2(THC)(record)
+    val ch4_rec = Record.monitorTypeProject2(CH4)(record)
     if (isOk(thc_rec) && isOk(ch4_rec)) {
       val thc = thc_rec._1.get
       val ch4 = ch4_rec._1.get
       if (ch4 > thc) {
         invalid = true
-        val ar = Alarm2(Monitor.withName(record.monitor), record.date, Src(A226), Level.ERR, s"違反合理性稽核")
+        val ar = Alarm2(Monitor.withName(record.monitor), record.date, Src(THC), Level.ERR, s"違反合理性稽核")
         try {
           Alarm2.insertAlarm(ar)
         } catch {
@@ -81,19 +81,19 @@ case class CompareRule(
           // Skip duplicate alarm
         }
 
-        targetStat.setAuditStat(A226, lead)
-        targetStat.setAuditStat(A286, lead)
+        targetStat.setAuditStat(THC, lead)
+        targetStat.setAuditStat(CH4, lead)
       }
     }
 
-    val nox_rec = Record.monitorTypeProject2(A223)(record)
-    val no2_rec = Record.monitorTypeProject2(A293)(record)
+    val nox_rec = Record.monitorTypeProject2(NOx)(record)
+    val no2_rec = Record.monitorTypeProject2(NO2)(record)
     if (isOk(nox_rec) && isOk(no2_rec)) {
       val nox = nox_rec._1.get
       val no2 = no2_rec._1.get
       if (nox < no2) {
         invalid = true
-        val ar = Alarm2(Monitor.withName(record.monitor), record.date, Src(A223), Level.ERR, s"違反合理性稽核(NOx<NO2)")
+        val ar = Alarm2(Monitor.withName(record.monitor), record.date, Src(NOx), Level.ERR, s"違反合理性稽核(NOx<NO2)")
         try {
           Alarm2.insertAlarm(ar)
         } catch {
@@ -101,19 +101,19 @@ case class CompareRule(
           // Skip duplicate alarm
         }
 
-        targetStat.setAuditStat(A223, lead)
-        targetStat.setAuditStat(A293, lead)
+        targetStat.setAuditStat(NOx, lead)
+        targetStat.setAuditStat(NO2, lead)
       }
     }
-    val pm25 = Record.monitorTypeProject2(A215)(record)
-    val pm10 = Record.monitorTypeProject2(A214)(record)
-    val tsp = Record.monitorTypeProject2(A213)(record)
+    val pm25 = Record.monitorTypeProject2(PM25)(record)
+    val pm10 = Record.monitorTypeProject2(PM10)(record)
+    val tsp = Record.monitorTypeProject2(TSP)(record)
     if (isOk(tsp) && isOk(pm10)) {
       if (pm10._1.get > tsp._1.get) {
         invalid = true
-        targetStat.setAuditStat(A214, lead)
-        targetStat.setAuditStat(A213, lead)
-        val ar = Alarm2(Monitor.withName(record.monitor), record.date, Src(A214), Level.ERR, s"違反合理性稽核(PM10>TSP)")
+        targetStat.setAuditStat(PM10, lead)
+        targetStat.setAuditStat(TSP, lead)
+        val ar = Alarm2(Monitor.withName(record.monitor), record.date, Src(PM10), Level.ERR, s"違反合理性稽核(PM10>TSP)")
         try {
           Alarm2.insertAlarm(ar)
         } catch {
@@ -125,9 +125,9 @@ case class CompareRule(
     if (isOk(pm25) && isOk(tsp)) {
       if (pm25._1.get > tsp._1.get) {
         invalid = true
-        targetStat.setAuditStat(A215, lead)
-        targetStat.setAuditStat(A213, lead)
-        val ar = Alarm2(Monitor.withName(record.monitor), record.date, Src(A215), Level.ERR, s"違反合理性稽核(PM2.5>TSP)")
+        targetStat.setAuditStat(PM25, lead)
+        targetStat.setAuditStat(TSP, lead)
+        val ar = Alarm2(Monitor.withName(record.monitor), record.date, Src(PM25), Level.ERR, s"違反合理性稽核(PM2.5>TSP)")
         try {
           Alarm2.insertAlarm(ar)
         } catch {
@@ -139,9 +139,9 @@ case class CompareRule(
     if (isOk(pm25) && isOk(pm10)) {
       if (pm25._1.get > pm10._1.get) {
         invalid = true
-        targetStat.setAuditStat(A214, lead)
-        targetStat.setAuditStat(A215, lead)
-        val ar = Alarm2(Monitor.withName(record.monitor), record.date, Src(A214), Level.ERR, s"違反合理性稽核(PM2.5>PM10)")
+        targetStat.setAuditStat(PM10, lead)
+        targetStat.setAuditStat(PM25, lead)
+        val ar = Alarm2(Monitor.withName(record.monitor), record.date, Src(PM10), Level.ERR, s"違反合理性稽核(PM2.5>PM10)")
         try {
           Alarm2.insertAlarm(ar)
         } catch {

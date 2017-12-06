@@ -11,6 +11,7 @@ import java.nio.file.Files
 import javax.inject._
 import play.api.i18n._
 import play.api.Play.current
+import models.ExcelUtility
 
 object ReportUnit extends Enumeration {
   val Min = Value("min")
@@ -121,7 +122,7 @@ object Query {
 
     import Realtime._
 
-    val windMtv = MonitorType.C212
+    val windMtv = MonitorType.WD_DIR
     val local_series =
       if (monitorTypes.length > 1 && monitorTypes.contains(windMtv)) {
         //val noWinMt = monitorTypes.filter { _ != windMtv }
@@ -296,7 +297,7 @@ object Query {
       }
     }
 
-    val windMtCase = MonitorType.map(MonitorType.C212)
+    val windMtCase = MonitorType.map(MonitorType.WD_DIR)
     val windYaxis = YAxis(None, AxisTitle(Some(Some(s"${windMtCase.desp} (${windMtCase.unit})"))), None,
       opposite = true,
       floor = Some(0),
@@ -896,7 +897,7 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
         series)
 
       if (outputType == OutputType.excel) {
-        val excelFile = ExcelUtility.exportChartData(chart, Array.fill(nWay)(MonitorType.C211))
+        val excelFile = ExcelUtility.exportChartData(chart, Array.fill(nWay)(MonitorType.WD_SPEED))
         Results.Ok.sendFile(excelFile, fileName = _ =>
           play.utils.UriEncoding.encodePathSegment(chart.title("text") + ".xlsx", "UTF-8"),
           onClose = () => { Files.deleteIfExists(excelFile.toPath()) })

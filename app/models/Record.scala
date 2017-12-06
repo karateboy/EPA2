@@ -21,7 +21,7 @@ case class Stat(
 
 case class MonitorTypeRecord(monitorType: MonitorType.Value, dataList: List[(Timestamp, Option[Float], Option[String])], stat: Stat)
 case class DailyReport(
-  typeList: Array[MonitorTypeRecord])
+  typeList: Seq[MonitorTypeRecord])
 
 object TableType extends Enumeration {
   val Min = Value("Min")
@@ -217,11 +217,11 @@ object Record {
 
   def secRecordProject(mt: MonitorType.Value) =
     (rs: SixSecRecord) => {
-      assert(mt == MonitorType.C211 || mt == MonitorType.C212)
+      assert(mt == MonitorType.WD_SPEED || mt == MonitorType.WD_DIR)
       val start = rs.time
       val values =
         for (i <- 0 to 9) yield {
-          if (mt == MonitorType.C211) {
+          if (mt == MonitorType.WD_SPEED) {
             (start + (6 * i).second, (rs.winSpeed(i), rs.winSpeed_stat(i)))
           } else {
             (start + (6 * i).second, (rs.winDir(i), rs.winDir_stat(i)))
@@ -387,7 +387,7 @@ object Record {
         } yield {
           val avg = if (MonitorType.windDirList.contains(mt)) {
             val windDir = projections
-            val wsT = monitorTypeProject2(MonitorType.C211)
+            val wsT = monitorTypeProject2(MonitorType.WD_SPEED)
             val windSpeed = reportList.map(rs => (rs.date, wsT(rs)._1, wsT(rs)._2))
             windAvg(windSpeed, windDir)
           } else {
@@ -406,7 +406,7 @@ object Record {
           MonitorTypeRecord(mt, projections, stat)
         }
 
-      DailyReport(typeResultList.toArray)
+      DailyReport(typeResultList)
     }
   }
 
@@ -461,7 +461,7 @@ object Record {
 
             def doCalibrate(mt: MonitorType.Value) = {
               val isTHCcalibrated = Play.current.configuration.getBoolean("THC.calibrated").getOrElse(true)
-              if (!isTHCcalibrated && mt == MonitorType.A226) {
+              if (!isTHCcalibrated && mt == MonitorType.THC) {
                 monitorTypeProject2(mt)(rs)._1
               } else
                 findCalibration(calibrationMap(mt)).get._2.calibrate(monitorTypeProject2(mt)(rs)._1)
@@ -478,21 +478,21 @@ object Record {
             if (SystemConfig.getApplyCalibration && canCalibrate(mt)) {
               val calibrated = doCalibrate(mt)
               (rs.date, calibrated, t(rs)._2)
-            } else if (SystemConfig.getApplyCalibration && mt == MonitorType.A293 &&
-              canCalibrate(MonitorType.A223) && canCalibrate(MonitorType.A283)) {
+            } else if (SystemConfig.getApplyCalibration && mt == MonitorType.NO2 &&
+              canCalibrate(MonitorType.NOx) && canCalibrate(MonitorType.NO)) {
               //A293=> NO2, A223=>NOX, A283=> NO
-              val calibratedNOx = doCalibrate(MonitorType.A223)
-              val calibratedNO = doCalibrate(MonitorType.A283)
+              val calibratedNOx = doCalibrate(MonitorType.NOx)
+              val calibratedNO = doCalibrate(MonitorType.NO)
               val interpolatedNO2 =
                 for (NOx <- calibratedNOx; NO <- calibratedNO)
                   yield NOx - NO
 
               (rs.date, interpolatedNO2, t(rs)._2)
-            } else if (SystemConfig.getApplyCalibration && mt == MonitorType.A296 &&
-              canCalibrate(MonitorType.A286) && canCalibrate(MonitorType.A226)) {
+            } else if (SystemConfig.getApplyCalibration && mt == MonitorType.NMHC &&
+              canCalibrate(MonitorType.CH4) && canCalibrate(MonitorType.THC)) {
               //A296=>NMHC, A286=>CH4, A226=>THC
-              val calibratedCH4 = doCalibrate(MonitorType.A286)
-              val calibratedTHC = doCalibrate(MonitorType.A226)
+              val calibratedCH4 = doCalibrate(MonitorType.CH4)
+              val calibratedTHC = doCalibrate(MonitorType.THC)
 
               val interpolatedNMHC =
                 for (ch4 <- calibratedCH4; thc <- calibratedTHC)
@@ -517,7 +517,7 @@ object Record {
             if (count >= 16) {
               val avg = if (MonitorType.windDirList.contains(mt)) {
                 val windDir = projections
-                val windSpeedT = monitorTypeProject2(MonitorType.C211)
+                val windSpeedT = monitorTypeProject2(MonitorType.WD_SPEED)
                 val windSpeed = reportList.map(rs => (rs.date, windSpeedT(rs)._1, windSpeedT(rs)._2))
                 windAvg(windSpeed, windDir)
               } else {
@@ -532,7 +532,7 @@ object Record {
           MonitorTypeRecord(mt, projections, stat)
         }
 
-      DailyReport(typeResultList.toArray)
+      DailyReport(typeResultList)
     }
   }
 
@@ -640,13 +640,13 @@ object Record {
       //Record.monitorTypeProject2(monitorType)
       records.map { r =>
         val mtValue = Record.monitorTypeProject2(monitorType)(r)._1
-        val wind_dir = r.recordMap(MonitorType.C212)._1
+        val wind_dir = r.recordMap(MonitorType.WD_DIR)._1
         (wind_dir, mtValue)
       }
     } else {
       val mtValue = getEpaHourRecord(monitor.asInstanceOf[EpaMonitor.Value], monitorType, start, end)
       val mtValueMap = mtValue.map { r => r.time -> r.value }.toMap
-      val windDir = getEpaHourRecord(monitor.asInstanceOf[EpaMonitor.Value], MonitorType.C212, start, end)
+      val windDir = getEpaHourRecord(monitor.asInstanceOf[EpaMonitor.Value], MonitorType.WD_DIR, start, end)
 
       val windDirMap = windDir.map { r => r.time -> r.value }.toMap
       for (time <- getPeriods(start, end, 1.hour))
@@ -796,7 +796,7 @@ object Record {
           if (count != 0) {
             if (MonitorType.windDirList.contains(mt)) {
               val windDir = mtRecord.map(r => (r._1: java.sql.Timestamp, r._2._1, r._2._2))
-              val wsT = monitorTypeProject2(MonitorType.C211)
+              val wsT = monitorTypeProject2(MonitorType.WD_SPEED)
               val windSpeed = hrRecord.map(rs => (rs.date: java.sql.Timestamp, wsT(rs)._1, wsT(rs)._2))
               val wind_avg = windAvg(windSpeed, windDir)
               Stat(Some(wind_avg), Some(data.min), Some(data.max), count, 24, 0)
@@ -824,7 +824,7 @@ object Record {
           if (count != 0) {
             if (MonitorType.windDirList.contains(mt)) {
               val windDir = data
-              val windSpeed = getEpaHourRecord(epaMonitor, MonitorType.C211, start, end).map { r => r.value }
+              val windSpeed = getEpaHourRecord(epaMonitor, MonitorType.WD_SPEED, start, end).map { r => r.value }
               val wind_avg = windAvgF(windSpeed, windDir)
               Stat(Some(wind_avg), Some(data.min), Some(data.max), count, 24, 0)
             } else {

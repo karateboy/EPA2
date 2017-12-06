@@ -59,8 +59,8 @@ object AggregateReport {
     } yield {
       val dailyReport = Record.getDailyReport(m, date)
       def getDesc = {
-        val windSpeed = dailyReport.typeList.find(t => t.monitorType == MonitorType.C211).get
-        val windDirOpt = dailyReport.typeList.find(t => t.monitorType == MonitorType.C212)
+        val windSpeed = dailyReport.typeList.find(t => t.monitorType == MonitorType.WD_SPEED).get
+        val windDirOpt = dailyReport.typeList.find(t => t.monitorType == MonitorType.WD_DIR)
         val dirMap =
           Map(
             (0 -> "北"), (1 -> "北北東"), (2 -> "東北"), (3 -> "東北東"), (4 -> "東"),
@@ -102,7 +102,7 @@ object AggregateReport {
             val header = s"${mCase.desp}於${genDesc(hours(0),hours(0)+1, hours.drop(1))}時超過內控(${mtInternal}${mCase.unit})"
             val overLaw =
               if (mCase.std_law.isDefined) {
-                if (t.monitorType == MonitorType.A214 || t.monitorType == MonitorType.A213) {
+                if (t.monitorType == MonitorType.PM10 || t.monitorType == MonitorType.TSP) {
                   if (t.stat.avg.isDefined && t.stat.avg.get > mCase.std_law.get)
                     s",日均值${t.stat.avg.get}超過法規值(${mCase.std_law.get}${mCase.unit})"
                   else

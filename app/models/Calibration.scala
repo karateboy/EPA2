@@ -182,7 +182,7 @@ object Calibration {
     val map = resultMap.map(kv => kv._1 -> kv._2.toList).toMap
 
     //Remove NO2 & NMHC
-    map - MonitorType.A293 - MonitorType.A296
+    map - MonitorType.NO2 - MonitorType.NMHC
     
   }
 
@@ -201,38 +201,38 @@ object Calibration {
 
   def doCalibrate(mt: MonitorType.Value)(implicit v: Option[Float], date: DateTime, calibrationMap: Map[MonitorType.Value, List[(Imports.DateTime, Calibration.CalibrationItem)]]) = {
     val isTHCcalibrated = Play.current.configuration.getBoolean("THC.calibrated").getOrElse(true)
-    if (!isTHCcalibrated && mt == MonitorType.A226) {
+    if (!isTHCcalibrated && mt == MonitorType.THC) {
       v
     } else
       findCalibration(calibrationMap(mt)).get._2.calibrate(v)
   }
 
   //A293 => NO2, A296=>NMHC
-  val interpolatedMonitorTypes = List(MonitorType.A293, MonitorType.A296)
+  val interpolatedMonitorTypes = List(MonitorType.NO2, MonitorType.NMHC)
 
   def mapMonitorTypeToMtCode(mt: MonitorType.Value) = {
     import MonitorType._
     mt match {
-      case A222 => "SO2"
-      case A223 => "NOx"
-      case A293 => "NO2"
-      case A283 => "NO"
-      case A224 => "CO"
-      case A225 => "O3"
-      case A226 => "THC"
-      case A221 => "TS"
-      case A286 => "CH4"
-      case A296 => "NMHC"
-      case A229 => "NH3"
-      case A213 => "TSP"
-      case A214 => "PM10"
-      case A215 => "PM25"
-      case C211 => "WD_SPEED"
-      case C212 => "WD_DIR"
-      case C214 => "TEMP"
-      case C215 => "HUMID"
-      case C216 => "PRESS"
-      case C213 => "RAIN"
+      case SO2 => "SO2"
+      case NOx => "NOx"
+      case NO2 => "NO2"
+      case NO => "NO"
+      case CO => "CO"
+      case O3 => "O3"
+      case THC => "THC"
+      case TS => "TS"
+      case CH4 => "CH4"
+      case NMHC => "NMHC"
+      case NH3 => "NH3"
+      case TSP => "TSP"
+      case PM10 => "PM10"
+      case PM25 => "PM25"
+      case WD_SPEED => "WD_SPEED"
+      case WD_DIR => "WD_DIR"
+      case TEMP => "TEMP"
+      case HUMID => "HUMID"
+      case PRESS => "PRESS"
+      case RAIN => "RAIN"
     }
   }
 
@@ -241,25 +241,25 @@ object Calibration {
     def mapMonitorTypeToFullScale(mt: MonitorType.Value) = {
       import MonitorType._
       mt match {
-        case A222 => //"SO2"
+        case SO2 => //"SO2"
           250
-        case A223 => //"NOx"
+        case NOx => //"NOx"
           250
-        case A293 => //"NO2"
+        case NO2 => //"NO2"
           250
-        case A283 => //"NO"
+        case NO => //"NO"
           250
-        case A224 => //"CO"
+        case CO => //"CO"
           25
-        case A225 => //"O3"
+        case O3 => //"O3"
           500
-        case A226 => //"THC"
+        case THC => //"THC"
           20
-        case A221 => //"TS"
+        case TS => //"TS"
           20
-        case A286 => //"CH4"
+        case CH4 => //"CH4"
           20
-        case A296 => //"NMHC"
+        case NMHC => //"NMHC"
           20
           
         case _ => 100

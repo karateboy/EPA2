@@ -110,8 +110,8 @@ class DataLogger extends Controller {
           val calibrated = doCalibrate(mt)
           sb.append(calibrated.get)
           sb.append(",")
-        } else if (mt == MonitorType.A293 &&
-          canCalibrate(MonitorType.A223) && canCalibrate(MonitorType.A283)) {
+        } else if (mt == MonitorType.NO2 &&
+          canCalibrate(MonitorType.NOx) && canCalibrate(MonitorType.NO)) {
           //A293=> NO2, A223=>NOX, A283=> NO
           val recNOxOpt = recordList.mtDataList.find { r => r.mtName == "NOx" }
           val recNO_Opt = recordList.mtDataList.find { r => r.mtName == "NO" }
@@ -120,8 +120,8 @@ class DataLogger extends Controller {
             for {
               recNOx <- recNOxOpt
               recNO <- recNO_Opt
-              NOx <- doCalibrate(MonitorType.A223)(Some(recNOx.value.toFloat), tm, calibrationMap)
-              NO <- doCalibrate(MonitorType.A283)(Some(recNO.value.toFloat), tm, calibrationMap)
+              NOx <- doCalibrate(MonitorType.NOx)(Some(recNOx.value.toFloat), tm, calibrationMap)
+              NO <- doCalibrate(MonitorType.NO)(Some(recNO.value.toFloat), tm, calibrationMap)
             } yield NOx - NO
 
           if (interpolatedNO2.isDefined) {
@@ -130,20 +130,20 @@ class DataLogger extends Controller {
             sb.append(v.get)
           }
           sb.append(",")
-        } else if (mt == MonitorType.A296 &&
-          canCalibrate(MonitorType.A286) && canCalibrate(MonitorType.A226)) {
+        } else if (mt == MonitorType.NMHC &&
+          canCalibrate(MonitorType.CH4) && canCalibrate(MonitorType.THC)) {
           //A296=>NMHC, A286=>CH4, A226=>THC
           val recCH4Opt = recordList.mtDataList.find { r => r.mtName == "CH4" }
           val recTHC_Opt = recordList.mtDataList.find { r => r.mtName == "THC" }
 
-          val calibratedCH4 = doCalibrate(MonitorType.A286)
-          val calibratedTHC = doCalibrate(MonitorType.A226)
+          val calibratedCH4 = doCalibrate(MonitorType.CH4)
+          val calibratedTHC = doCalibrate(MonitorType.THC)
           val interpolatedNMHC =
             for {
               recCH4 <- recCH4Opt
               recTHC <- recTHC_Opt
-              ch4 <- doCalibrate(MonitorType.A286)(Some(recCH4.value.toFloat), tm, calibrationMap)
-              thc <- doCalibrate(MonitorType.A226)(Some(recTHC.value.toFloat), tm, calibrationMap)
+              ch4 <- doCalibrate(MonitorType.CH4)(Some(recCH4.value.toFloat), tm, calibrationMap)
+              thc <- doCalibrate(MonitorType.THC)(Some(recTHC.value.toFloat), tm, calibrationMap)
             } yield thc - ch4
 
           if (interpolatedNMHC.isDefined) {

@@ -6,6 +6,7 @@ import com.github.nscala_time.time.Imports._
 import models._
 import javax.inject._
 import play.api.i18n._
+import models.ExcelUtility
 
 object MinMonthlyReportWorker {
   def props(out: ActorRef)(implicit messages:Messages) = Props(new MinMonthlyReportWorker(out))

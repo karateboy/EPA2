@@ -234,8 +234,8 @@ class Realtime @Inject() (val messagesApi: MessagesApi) extends Controller with 
         }
 
       //EPA monitor
-      val WIND_DIR = MonitorType.C212
-      val WIND_SPEED = MonitorType.C211
+      val WIND_DIR = MonitorType.WD_DIR
+      val WIND_SPEED = MonitorType.WD_SPEED
       val currentHour = current.withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0) - 2.hour
       val epaWeatherMap = Record.getEpaHourMap(EpaMonitor.epaList,
         List(WIND_DIR, WIND_SPEED), currentHour)

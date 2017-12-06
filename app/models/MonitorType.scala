@@ -132,50 +132,49 @@ object MonitorType extends Enumeration {
     }
   }
 
-  val A213 = MonitorType.withName("TSP")
-  val A214 = MonitorType.withName("PM10")
-  val A215 = MonitorType.withName("PM25")
-  val A221 = MonitorType.withName("TS")
-  val A222 = MonitorType.withName("SO2")
-  val A223 = MonitorType.withName("NOx")
-  val A224 = MonitorType.withName("CO")
-  val A225 = MonitorType.withName("O3")
-  val A226 = MonitorType.withName("THC")
-  val A229 = MonitorType.withName("NH3")
-  val A232 = MonitorType.withName("NOY")
-  val A233 = MonitorType.withName("NOY_NO")
-  val A234 = MonitorType.withName("H2S")
-  val A283 = MonitorType.withName("NO")
-  val A286 = MonitorType.withName("CH4")
-  val A288 = MonitorType.withName("RHUMID")
-  val A289 = MonitorType.withName("RT")
-  val A293 = MonitorType.withName("NO2")
-  val A296 = MonitorType.withName("NMHC")
-  val C211 = MonitorType.withName("WD_SPEED")
-  val C212 = MonitorType.withName("WD_DIR")
-  val C213 = MonitorType.withName("RAIN")
-  val C214 = MonitorType.withName("TEMP")
-  val C215 = MonitorType.withName("HUMID")
-  val C216 = MonitorType.withName("PRESS")
+  val TSP = MonitorType.withName("TSP")
+  val PM10 = MonitorType.withName("PM10")
+  val PM25 = MonitorType.withName("PM25")
+  val TS = MonitorType.withName("TS")
+  val SO2 = MonitorType.withName("SO2")
+  val NOx = MonitorType.withName("NOx")
+  val CO = MonitorType.withName("CO")
+  val O3 = MonitorType.withName("O3")
+  val THC = MonitorType.withName("THC")
+  val NH3 = MonitorType.withName("NH3")
+  val NOY = MonitorType.withName("NOY")
+  val NOY_NO = MonitorType.withName("NOY_NO")
+  val H2S = MonitorType.withName("H2S")
+  val NO = MonitorType.withName("NO")
+  val CH4 = MonitorType.withName("CH4")
+  val RHUMID = MonitorType.withName("RHUMID")
+  val RT = MonitorType.withName("RT")
+  val NO2 = MonitorType.withName("NO2")
+  val NMHC = MonitorType.withName("NMHC")
+  val WD_SPEED = MonitorType.withName("WD_SPEED")
+  val WD_DIR = MonitorType.withName("WD_DIR")
+  val RAIN = MonitorType.withName("RAIN")
+  val TEMP = MonitorType.withName("TEMP")
+  val HUMID = MonitorType.withName("HUMID")
+  val PRESS = MonitorType.withName("PRESS")
   //New Mt
 
-  val psiList = List(A214, A222, A224, A225, A293)
+  val psiList = List(PM10, SO2, CO, O3, NO2)
   val windDirList = List(MonitorType.withName("WD_DIR"))
 
   val monitorReportList =
-    List(A222, A223, A293, A283, A224, A225, A226, A286, A296, A229, A232, A233, A234,
-      A221, A213, A214, A215,
-      C211, C212, C214, C215, C216, C213)
+    List(SO2, NOx, NO2, NO, CO, O3, THC, CH4, NMHC, NH3, TS, TSP, PM10, PM25,
+      WD_SPEED, WD_DIR, TEMP, HUMID, PRESS, RAIN)
 
-  val calibrationList = List(A222, A223, A293, A283, A224, A225, A226, A286, A296, A229, A221,
-    A213, A214, A215,
-    A288, A289)
+  val calibrationList = List(SO2, NOx, NO2, NO, CO, O3, THC, CH4, NMHC, NH3, TS,
+    TSP, PM10, PM25,
+    RHUMID, RT)
 
   val epaList =
-    List(A214, A215, A222, A223, A224, A225, A226, A283, A286, A293, A296, C211, C212, C213, C214, C215)
+    List(PM10, PM25, SO2, NOx, CO, O3, THC, NO, CH4, NO2, NMHC, WD_SPEED, WD_DIR, RAIN, TEMP, HUMID)
 
   val epaReportList =
-    List(C212, C211, A222, A293, A224, A225, A214, A226, A296)
+    List(WD_DIR, WD_SPEED, SO2, NO2, CO, O3, PM10, THC, NMHC)
 
   val epaMap = {
     map.filter(p => p._2.epa_mapping.isDefined).map(kv => (kv._2.epa_mapping.get, kv._1))

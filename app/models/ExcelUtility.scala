@@ -1,9 +1,9 @@
-package controllers
+package models
 import play.api._
 import play.api.Play.current
 import org.apache.poi.openxml4j.opc._
 import org.apache.poi.xssf.usermodel._
-import models._
+
 import models.Record._
 import models.ModelHelper._
 import com.github.nscala_time.time.Imports._
@@ -13,6 +13,11 @@ import java.nio.file._
 import org.apache.poi.ss.usermodel._
 import javax.inject._
 import play.api.i18n._
+import controllers.HighchartData
+import controllers.IntervalReport
+import controllers.MonthHourReport
+import controllers.MonthlyReport
+import controllers.Report
 
 object ExcelUtility {
   val docRoot = "/report_template/"
@@ -99,7 +104,7 @@ object ExcelUtility {
     }
   }
 
-  def createAllDailyReport(monitor:Monitor.Value, reportDate: DateTime) = {
+  def createAllDailyReport(monitor: Monitor.Value, reportDate: DateTime) = {
     implicit val (reportFilePath, pkg, wb) = prepareTemplate("all_daily_report.xlsx")
     val format = wb.createDataFormat();
     val sheet = wb.getSheetAt(0)
@@ -116,32 +121,39 @@ object ExcelUtility {
 
     def fillMonitorDailyReport(monitor: Monitor.Value, data: DailyReport, sheetIdx: Int) = {
       val sheet = wb.getSheetAt(sheetIdx)
-      
+
       sheet.getRow(1).getCell(0).setCellValue("監測站:" + Monitor.map(monitor).name)
-      sheet.getRow(1).getCell(30).setCellValue("查詢日期:" + DateTime.now.toString("YYYY/MM/dd"))
-      sheet.getRow(2).getCell(30).setCellValue("資料日期:" + reportDate.toString("YYYY/MM/dd"))
+      sheet.getRow(1).getCell(0).setCellValue("查詢日期:" + DateTime.now.toString("YYYY/MM/dd"))
+      sheet.getRow(2).getCell(0).setCellValue("資料日期:" + reportDate.toString("YYYY/MM/dd"))
 
-      
+      val mtDataPair = data.typeList map { mtr => mtr.monitorType -> mtr }
+      val mtDataMap = mtDataPair.toMap
       for {
-        col <- 1 to data.typeList.length
-        mtRecord = data.typeList(col - 1)
-        normalStyle = createStyle(mtRecord.monitorType)
-        abnormalStyles = createColorStyle(fgColors, mtRecord.monitorType)
-        row <- 4 to 27
-        cell = sheet.getRow(row).getCell(col)
-        cellData = mtRecord.dataList(row - 4)
+        (mt, idx) <- MonitorType.monitorReportList.zipWithIndex
+        col = idx + 1
       } {
-        val (date, valueOpt, statusOpt) = cellData
-        if (valueOpt.isEmpty || statusOpt.isEmpty) {
-          cell.setCellValue("-")
+        if (!mtDataMap.contains(mt)) {
+          sheet.setColumnHidden(col, true)
         } else {
-          val value = valueOpt.get
-          val status = statusOpt.get
-          cell.setCellValue(value)
+          val mtRecord = mtDataMap(mt)
+          val normalStyle = createStyle(mt)
+          val abnormalStyles = createColorStyle(fgColors, mt)
+          for {
+            row <- 4 to 27
+            cell = sheet.getRow(row).getCell(col)
+            cellData = mtRecord.dataList(row - 4)
+          } {
+            val (date, valueOpt, statusOpt) = cellData
 
-          val cellStyle = getStyle(status, normalStyle, abnormalStyles)
-          cell.setCellStyle(cellStyle)
+            if (valueOpt.isDefined && statusOpt.isDefined) {
+              cell.setCellValue(valueOpt.get)
+              val cellStyle = getStyle(statusOpt.get, normalStyle, abnormalStyles)
+              cell.setCellStyle(cellStyle)
+            } else
+              cell.setCellValue("-")
+          }
         }
+
       }
 
       for {
@@ -166,9 +178,9 @@ object ExcelUtility {
 
     }
 
-      val dailyReport = Record.getDailyReport(monitor, reportDate)
+    val dailyReport = Record.getDailyReport(monitor, reportDate)
 
-      fillMonitorDailyReport(monitor, dailyReport, 0)
+    fillMonitorDailyReport(monitor, dailyReport, 0)
 
     wb.setActiveSheet(0)
     finishExcel(reportFilePath, pkg, wb)
@@ -243,9 +255,12 @@ object ExcelUtility {
     finishExcel(reportFilePath, pkg, wb)
   }
 
-  def createMonthlyReport(monitor: Monitor.Value, reportDate: DateTime, data: MonthlyReport, nDay: Int)(implicit messages:Messages) = {
+  def createMonthlyReport(monitor: Monitor.Value, reportDate: DateTime, data: MonthlyReport, nDay: Int)(implicit messages: Messages) = {
     implicit val (reportFilePath, pkg, wb) = prepareTemplate("monthly_report.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
+
+    val mtDataPair = data.typeArray map { mtr => mtr.monitorType -> mtr }
+    val mtDataMap = mtDataPair.toMap
 
     val fgColors =
       {
@@ -256,11 +271,9 @@ object ExcelUtility {
       }
 
     def fillEffectSheet(sheet: XSSFSheet) = {
-      val titleRow = sheet.getRow(2)
-      val titleCell = titleRow.getCell(0)
-      titleCell.setCellValue("監測站:" + Monitor.map(monitor).name)
-      sheet.getRow(1).getCell(17).setCellValue("查詢日期:" + DateTime.now.toString("YYYY/MM/dd"))
-      titleRow.getCell(17).setCellValue("資料日期:" + reportDate.toString("YYYY年MM月"))
+      sheet.getRow(0).getCell(0).setCellValue("監測站:" + Monitor.map(monitor).name)
+      sheet.getRow(1).getCell(0).setCellValue("查詢日期:" + DateTime.now.toString("YYYY/MM/dd"))
+      sheet.getRow(2).getCell(0).setCellValue("資料日期:" + reportDate.toString("YYYY年MM月"))
 
       import org.apache.poi.hssf.util.HSSFColor
       def createInvalidStyle(mt: MonitorType.Value) = {
@@ -271,105 +284,80 @@ object ExcelUtility {
       }
 
       for {
-        col <- 1 to data.typeArray.length
-        row <- 5 to (5 + nDay - 1)
-        mtRecord = data.typeArray(col - 1)
-        cell = sheet.getRow(row).getCell(col)
-        cellData = mtRecord.dataList(row - 5)
-        invalidStyle = createInvalidStyle(mtRecord.monitorType)
+        (mt, idx) <- MonitorType.monitorReportList.zipWithIndex
+        col = idx + 1
       } {
-        cell.setCellValue(cellData.count)
-        if (cellData.count < 16)
-          cell.setCellStyle(invalidStyle)
-      }
-      //Hide unused Monitor Type
-      for {
-        col <- 1 to data.typeArray.length
-        mtRecord = data.typeArray(col - 1)
-      } {
-        if (!Monitor.map(monitor).monitorTypes.contains(mtRecord.monitorType))
-          sheet.setColumnHidden(col, true)
-      }
+        if (mtDataMap.contains(mt)) {
+          val mtRecord = mtDataMap(mt)
+          for {
+            row <- 5 to (5 + mtRecord.dataList.length - 1)
+            cell = sheet.getRow(row).getCell(col)
+            cellData = mtRecord.dataList(row - 5)
+            invalidStyle = createInvalidStyle(mt)
+          } {
+            cell.setCellValue(cellData.count)
+            if (cellData.count < 16)
+              cell.setCellStyle(invalidStyle)
+          }
 
-      for {
-        col <- 1 to data.typeArray.length
-        mtRecord = data.typeArray(col - 1)
-      } {
-        val sum = mtRecord.dataList.map(_.count).sum
-        sheet.getRow(36).getCell(col).setCellValue(sum)
-        sheet.getRow(37).getCell(col).setCellValue(nDay * 24)
-        evaluator.evaluateFormulaCell(sheet.getRow(38).getCell(col))
-      }
-
-      //Hide col not in use
-      for {
-        col <- 1 to data.typeArray.length
-      } {
-        val mt = data.typeArray(col - 1).monitorType
-        if (!Monitor.map(monitor).monitorTypes.contains(mt)) {
+          val sum = mtRecord.dataList.map(_.count).sum
+          sheet.getRow(36).getCell(col).setCellValue(sum)
+          sheet.getRow(37).getCell(col).setCellValue(nDay * 24)
+          evaluator.evaluateFormulaCell(sheet.getRow(38).getCell(col))
+        } else {
           sheet.setColumnHidden(col, true)
         }
       }
     }
 
     // Fill Graph title
-    val graph_list = List(MonitorType.C211, MonitorType.A222, MonitorType.A224, MonitorType.A293,
-      MonitorType.A225, MonitorType.A214, MonitorType.A296, MonitorType.A213)
+    val graph_list = List(MonitorType.WD_SPEED, MonitorType.SO2, MonitorType.CO, MonitorType.NO2,
+      MonitorType.O3, MonitorType.PM10, MonitorType.NMHC, MonitorType.TSP)
 
     def fillMonthlySheet(sheet: XSSFSheet) = {
-      val titleRow = sheet.getRow(2)
-      val titleCell = titleRow.getCell(0)
-      titleCell.setCellValue("監測站:" + Monitor.map(monitor).name)
+      sheet.getRow(0).getCell(0).setCellValue("監測站:" + Monitor.map(monitor).name)
       sheet.getRow(1).getCell(22).setCellValue("查詢日期:" + DateTime.now.toString("YYYY/MM/dd"))
-      titleRow.getCell(22).setCellValue("資料日期:" + reportDate.toString("YYYY年MM月"))
+      sheet.getRow(2).getCell(22).setCellValue("資料日期:" + reportDate.toString("YYYY年MM月"))
 
       val abnormalColor =
         {
           val seqColors =
             for (col <- 3 to 3)
-              yield titleRow.getCell(col).getCellStyle.getFillForegroundXSSFColor
+              yield sheet.getRow(2).getCell(col).getCellStyle.getFillForegroundXSSFColor
           seqColors.toArray
         }
 
       for {
-        col <- 1 to data.typeArray.length
-        mtRecord = data.typeArray(col - 1)
-        normalStyle = createStyle(mtRecord.monitorType)
-        abnormalStyles = createColorStyle(abnormalColor, mtRecord.monitorType)
-        row <- 5 to (5 + nDay - 1)
-        cell = sheet.getRow(row).getCell(col)
-        cellData = mtRecord.dataList(row - 5)
+        (mt, idx) <- MonitorType.monitorReportList.zipWithIndex
+        col = idx + 1
       } {
-        if (cellData.avg.isDefined)
-          cell.setCellValue(cellData.avg.get)
-        else
-          cell.setCellValue("-")
+        if (mtDataMap.contains(mt)) {
+          val mtRecord = mtDataMap(mt)
+          val normalStyle = createStyle(mtRecord.monitorType)
+          val abnormalStyles = createColorStyle(abnormalColor, mt)
+          for {
+            row <- 5 to (5 + mtRecord.dataList.length - 1)
+            cell = sheet.getRow(row).getCell(col)
+            cellData = mtRecord.dataList(row - 5)
+          } {
+            if (cellData.avg.isDefined)
+              cell.setCellValue(cellData.avg.get)
+            else
+              cell.setCellValue("-")
 
-        if (cellData.count >= 16)
-          cell.setCellStyle(normalStyle)
-        else
-          cell.setCellStyle(abnormalStyles(0))
-      }
+            if (cellData.count >= 16)
+              cell.setCellStyle(normalStyle)
+            else
+              cell.setCellStyle(abnormalStyles(0))
+          }
 
-      for {
-        col <- 1 to data.typeArray.length
-        mtRecord = data.typeArray(col - 1)
-      } {
-        val stat = mtRecord.stat
+          val stat = mtRecord.stat
 
-        stat.avg.fold(sheet.getRow(36).getCell(col).setCellValue("-"))(avg => sheet.getRow(36).getCell(col).setCellValue(avg))
-        stat.max.fold(sheet.getRow(37).getCell(col).setCellValue("-"))(max => sheet.getRow(37).getCell(col).setCellValue(max))
-        stat.min.fold(sheet.getRow(38).getCell(col).setCellValue("-"))(min => sheet.getRow(38).getCell(col).setCellValue(min))
-        evaluator.evaluateFormulaCell(sheet.getRow(39).getCell(col))
-
-      }
-
-      //Hide col not in use
-      for {
-        col <- 1 to data.typeArray.length
-      } {
-        val mt = data.typeArray(col - 1).monitorType
-        if (!Monitor.map(monitor).monitorTypes.contains(mt)) {
+          stat.avg.fold(sheet.getRow(36).getCell(col).setCellValue("-"))(avg => sheet.getRow(36).getCell(col).setCellValue(avg))
+          stat.max.fold(sheet.getRow(37).getCell(col).setCellValue("-"))(max => sheet.getRow(37).getCell(col).setCellValue(max))
+          stat.min.fold(sheet.getRow(38).getCell(col).setCellValue("-"))(min => sheet.getRow(38).getCell(col).setCellValue(min))
+          evaluator.evaluateFormulaCell(sheet.getRow(39).getCell(col))
+        } else {
           sheet.setColumnHidden(col, true)
         }
       }
@@ -392,131 +380,85 @@ object ExcelUtility {
     }
 
     def fillMonthlyHourSheet(report: MonthHourReport) = {
-      val reportTypeLen = report.dailyReports(0).typeList.length
 
       for {
-        sheetIndex <- 2 to reportTypeLen + 1
+        (mt, mt_idx) <- MonitorType.monitorReportList.zipWithIndex
+        sheetIndex = 2 + mt_idx
         sheet = wb.getSheetAt(sheetIndex)
-        mt = report.dailyReports(0).typeList(sheetIndex - 2).monitorType
       } {
         if (!Monitor.map(monitor).monitorTypes.contains(mt)) {
           wb.setSheetHidden(sheetIndex, true)
-        }
-      }
-
-      for {
-        sheetIndex <- 2 to reportTypeLen + 1
-        sheet = wb.getSheetAt(sheetIndex)
-      } {
-        sheet.getRow(1).getCell(0).setCellValue("監測站:" + Monitor.map(monitor).name)
-        sheet.getRow(1).getCell(25).setCellValue("查詢日期:" + DateTime.now.toString("YYYY/MM/dd"))
-        sheet.getRow(2).getCell(25).setCellValue("資料日期:" + reportDate.toString("YYYY年MM月"))
-        sheet.getRow(43).getCell(0).setCellValue("資料日期:" + reportDate.toString("YYYY年MM月"))
-      }
-
-      for {
-        sheetIndex <- 2 to reportTypeLen + 1
-        sheet = wb.getSheetAt(sheetIndex)
-        mt = report.dailyReports(0).typeList(sheetIndex - 2).monitorType
-        normalStyle = createStyle(mt)
-        abnormalStyles = createColorStyle(fgColors, mt)
-        row <- 4 to (4 + nDay - 1)
-        dayRecord = report.dailyReports(row - 4)
-        col <- 1 to 24
-        cell = sheet.getRow(row).getCell(col)
-        cellData = dayRecord.typeList(sheetIndex - 2).dataList(col - 1)
-      } {
-        val (date, valueOpt, statusOpt) = cellData
-        if (valueOpt.isEmpty || statusOpt.isEmpty) {
-          cell.setCellValue("-")
         } else {
-          cell.setCellValue(valueOpt.get)
-          val style = getStyle(statusOpt.get, normalStyle, abnormalStyles)
-          cell.setCellStyle(style)
-        }
+          sheet.getRow(1).getCell(0).setCellValue("監測站:" + Monitor.map(monitor).name)
+          sheet.getRow(1).getCell(25).setCellValue("查詢日期:" + DateTime.now.toString("YYYY/MM/dd"))
+          sheet.getRow(2).getCell(25).setCellValue("資料日期:" + reportDate.toString("YYYY年MM月"))
+          sheet.getRow(43).getCell(0).setCellValue("資料日期:" + reportDate.toString("YYYY年MM月"))
+
+          val normalStyle = createStyle(mt)
+          val abnormalStyles = createColorStyle(fgColors, mt)
+          for {
+            day <- 0 to nDay - 1
+            row = day + 4
+            dayRecord = report.dailyReports(day)
+          } {
+            //Stat
+            val stat = dayRecord.typeList(mt_idx).stat
+            if (stat.avg.isDefined) {
+              sheet.getRow(row).getCell(25).setCellValue(stat.avg.get)
+              sheet.getRow(row).getCell(29).setCellValue(stat.avg.get * stat.count)
+            } else {
+              sheet.getRow(row).getCell(25).setCellValue("-")
+              sheet.getRow(row).getCell(29).setCellValue("-")
+            }
+            sheet.getRow(row).getCell(26).setCellValue(stat.count)
+            if (stat.max.isDefined)
+              sheet.getRow(row).getCell(27).setCellValue(stat.max.get)
+            else
+              sheet.getRow(row).getCell(27).setCellValue("-")
+
+            if (stat.min.isDefined)
+              sheet.getRow(row).getCell(28).setCellValue(stat.min.get)
+            else
+              sheet.getRow(row).getCell(28).setCellValue("-")
+
+            val dayMap = dayRecord.typeList.groupBy { _.monitorType }
+            for {
+              col <- 1 to 24
+              cell = sheet.getRow(row).getCell(col)
+              cellData = dayMap(mt).head.dataList(col - 1)
+            } {
+              val (date, valueOpt, statusOpt) = cellData
+              if (valueOpt.isEmpty || statusOpt.isEmpty) {
+                cell.setCellValue("-")
+              } else {
+                cell.setCellValue(valueOpt.get)
+                val style = getStyle(statusOpt.get, normalStyle, abnormalStyles)
+                cell.setCellStyle(style)
+              }
+
+            } // col loop
+          } // row loop
+          for {
+            col <- 1 to 24
+          } {
+            val stat = report.hourStatArray(col - 1)
+            if (stat.count >= 20) {
+              evaluator.evaluateFormulaCell(sheet.getRow(35).getCell(col))
+              sheet.getRow(36).getCell(col).setCellValue(stat.count)
+              evaluator.evaluateFormulaCell(sheet.getRow(37).getCell(col))
+              evaluator.evaluateFormulaCell(sheet.getRow(38).getCell(col))
+              evaluator.evaluateFormulaCell(sheet.getRow(39).getCell(col))
+            } else {
+              sheet.getRow(35).getCell(col).setCellValue("-")
+              sheet.getRow(36).getCell(col).setCellValue(stat.count)
+              sheet.getRow(37).getCell(col).setCellValue("-")
+              sheet.getRow(38).getCell(col).setCellValue("-")
+              sheet.getRow(39).getCell(col).setCellValue("-")
+            }
+          }
+        } //Sheet is ok        
       }
-
-      //Day Stat
-      for {
-        sheetIndex <- 2 to reportTypeLen + 1
-        sheet = wb.getSheetAt(sheetIndex)
-        row <- 4 to (4 + nDay - 1)
-        dayRecord = report.dailyReports(row - 4)
-        stat = dayRecord.typeList(sheetIndex - 2).stat
-      } {
-
-        if (stat.avg.isDefined) {
-          sheet.getRow(row).getCell(25).setCellValue(stat.avg.get)
-          sheet.getRow(row).getCell(29).setCellValue(stat.avg.get * stat.count)
-        } else {
-          sheet.getRow(row).getCell(25).setCellValue("-")
-          sheet.getRow(row).getCell(29).setCellValue("-")
-        }
-        sheet.getRow(row).getCell(26).setCellValue(stat.count)
-
-        if (stat.max.isDefined)
-          sheet.getRow(row).getCell(27).setCellValue(stat.max.get)
-        else
-          sheet.getRow(row).getCell(27).setCellValue("-")
-
-        if (stat.min.isDefined)
-          sheet.getRow(row).getCell(28).setCellValue(stat.min.get)
-        else
-          sheet.getRow(row).getCell(28).setCellValue("-")
-      }
-
-      //Day Stat
-      for {
-        sheetIndex <- 2 to reportTypeLen + 1
-        sheet = wb.getSheetAt(sheetIndex)
-        col <- 1 to 24
-        row <- 4 to (4 + nDay - 1)
-        stat = report.hourStatArray(col - 1)
-      } {
-        if (stat.count >= 20) {
-          evaluator.evaluateFormulaCell(sheet.getRow(35).getCell(col))
-          sheet.getRow(36).getCell(col).setCellValue(stat.count)
-          evaluator.evaluateFormulaCell(sheet.getRow(37).getCell(col))
-          evaluator.evaluateFormulaCell(sheet.getRow(38).getCell(col))
-          evaluator.evaluateFormulaCell(sheet.getRow(39).getCell(col))
-        } else {
-          sheet.getRow(35).getCell(col).setCellValue("-")
-          sheet.getRow(36).getCell(col).setCellValue(stat.count)
-          sheet.getRow(37).getCell(col).setCellValue("-")
-          sheet.getRow(38).getCell(col).setCellValue("-")
-          sheet.getRow(39).getCell(col).setCellValue("-")
-        }
-      }
-
-      for {
-        sheetIndex <- 2 to reportTypeLen + 1
-        sheet = wb.getSheetAt(sheetIndex)
-      } {
-        evaluator.evaluateFormulaCell(sheet.getRow(35).getCell(25))
-        evaluator.evaluateFormulaCell(sheet.getRow(36).getCell(25))
-        evaluator.evaluateFormulaCell(sheet.getRow(37).getCell(25))
-        evaluator.evaluateFormulaCell(sheet.getRow(38).getCell(25))
-        evaluator.evaluateFormulaCell(sheet.getRow(39).getCell(25))
-
-        evaluator.evaluateFormulaCell(sheet.getRow(36).getCell(26))
-        evaluator.evaluateFormulaCell(sheet.getRow(37).getCell(27))
-        evaluator.evaluateFormulaCell(sheet.getRow(38).getCell(28))
-        evaluator.evaluateFormulaCell(sheet.getRow(39).getCell(29))
-      }
-
-      //Re-evaluate
-      for {
-        sheetIndex <- 2 to reportTypeLen + 1
-        sheet = wb.getSheetAt(sheetIndex)
-        col <- 0 to (1 + nDay)
-      } {
-        evaluator.evaluateFormulaCell(sheet.getRow(45).getCell(col))
-        evaluator.evaluateFormulaCell(sheet.getRow(46).getCell(col))
-        evaluator.evaluateFormulaCell(sheet.getRow(47).getCell(col))
-      }
-
-      //Fill graph title
-
+      wb.setForceFormulaRecalculation(true)
     }
 
     def fillGraphHourSheet(report: MonthHourReport, idx: Int) = {
@@ -526,9 +468,12 @@ object ExcelUtility {
       for {
         dayReport <- report.dailyReports
       } {
+        val mtDayReportPair = dayReport.typeList map { tl => tl.monitorType -> tl}
+        val mtDayReportMap = mtDayReportPair.toMap 
         for {
-          mt_i <- 0 to dayReport.typeList.length - 1
-          dataI <- dayReport.typeList(mt_i).dataList.zipWithIndex
+          (mt, mt_i) <- MonitorType.monitorReportList.zipWithIndex if(mtDayReportMap.contains(mt))
+          mtDayReport = mtDayReportMap(mt)
+          dataI <- mtDayReport.dataList.zipWithIndex
         } {
           val (data, idx) = dataI
           if (data._2.isDefined && data._3.isDefined && MonitorStatus.isValid(data._3.get)) {
@@ -563,7 +508,7 @@ object ExcelUtility {
     fillMonthlySheet(wb.getSheetAt(1))
     val monthlyHourReport = Report.monthlyHourReportHelper(monitor, reportDate)
     fillMonthlyHourSheet(monthlyHourReport)
-    fillGraphHourSheet(monthlyHourReport, 2 + monthlyHourReport.dailyReports(0).typeList.length)
+    fillGraphHourSheet(monthlyHourReport, 2 + MonitorType.monitorReportList.length)
 
     wb.setActiveSheet(0)
     finishExcel(reportFilePath, pkg, wb)
@@ -654,7 +599,7 @@ object ExcelUtility {
     finishExcel(reportFilePath, pkg, wb)
   }
 
-  def createMultipleSiteEffectiveReport(monitorType: MonitorType.Value, reportDate: DateTime, rateList: List[MonitorTypeEffectiveRate], statMap: Map[Monitor.Value, Stat])(implicit messages:Messages) = {
+  def createMultipleSiteEffectiveReport(monitorType: MonitorType.Value, reportDate: DateTime, rateList: List[MonitorTypeEffectiveRate], statMap: Map[Monitor.Value, Stat])(implicit messages: Messages) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("effective_mulitiple.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
 
@@ -695,7 +640,7 @@ object ExcelUtility {
     finishExcel(reportFilePath, pkg, wb)
   }
 
-  def psiDailyReport(monitor: Monitor.Value, reportDate: DateTime, psiHourRecords: List[(Option[Float], Map[MonitorType.Value, (Option[Float], Option[Float])])])(implicit messages:Messages) = {
+  def psiDailyReport(monitor: Monitor.Value, reportDate: DateTime, psiHourRecords: List[(Option[Float], Map[MonitorType.Value, (Option[Float], Option[Float])])])(implicit messages: Messages) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("psi_daily.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
 
@@ -756,7 +701,7 @@ object ExcelUtility {
   }
 
   import models.Realtime._
-  def psiMonthlyReport(monitor: Monitor.Value, reportDate: DateTime, psiDailyList: List[PsiReport], nDays: Int)(implicit messages:Messages) = {
+  def psiMonthlyReport(monitor: Monitor.Value, reportDate: DateTime, psiDailyList: List[PsiReport], nDays: Int)(implicit messages: Messages) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("psi_monthly.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
 
@@ -853,7 +798,7 @@ object ExcelUtility {
     } {
       sheet.getRow(row).getCell(1).setCellValue(Monitor.map(monitor).name)
       sheet.getRow(row + 1).getCell(1).setCellValue(EpaMonitor.map(epaMonitor).name)
-      if (mt._1 == MonitorType.C212) {
+      if (mt._1 == MonitorType.WD_DIR) {
         sheet.getRow(row + 2).getCell(1).setCellValue(Monitor.map(monitor).name)
         sheet.getRow(row + 3).getCell(1).setCellValue(EpaMonitor.map(epaMonitor).name)
       }
@@ -866,7 +811,7 @@ object ExcelUtility {
         val vOpt = myMap(mt._1)._1.get(hr._1)
         if (vOpt.isDefined) {
           val p = vOpt.get
-          if (mt._1 == MonitorType.C212) {
+          if (mt._1 == MonitorType.WD_DIR) {
             val cellDir = sheet.getRow(row + 2).getCell(col)
             cell.setCellValue(p._1.get)
             cellDir.setCellValue(covertDegToDir(p._1.get))
@@ -907,7 +852,7 @@ object ExcelUtility {
           cell.setCellValue("-")
         } else {
           val epaRecord = vOpt.get
-          if (mt._1 == MonitorType.C212) {
+          if (mt._1 == MonitorType.WD_DIR) {
             val cellDir = sheet.getRow(row + 3).getCell(col)
             cell.setCellValue(epaRecord.value)
             cellDir.setCellValue(covertDegToDir(epaRecord.value))
@@ -925,7 +870,7 @@ object ExcelUtility {
         fillOpt(row + 1, stat.avg, 28)
       }
 
-      if (mt._1 == MonitorType.C212)
+      if (mt._1 == MonitorType.WD_DIR)
         row += 4
       else
         row += 2
@@ -935,7 +880,7 @@ object ExcelUtility {
 
   import Calibration._
 
-  def calibrationDailyReport(title: String, reportDate: DateTime, report: List[CalibrationItem], displayDate: Boolean = false)(implicit messages:Messages) = {
+  def calibrationDailyReport(title: String, reportDate: DateTime, report: List[CalibrationItem], displayDate: Boolean = false)(implicit messages: Messages) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("calibration_daily.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
 
@@ -1043,7 +988,7 @@ object ExcelUtility {
     finishExcel(reportFilePath, pkg, wb)
   }
 
-  def calibrationMonthlyAllReport(monitor: Monitor.Value, reportDate: DateTime, map: Map[MonitorType.Value, Map[String, Calibration.CalibrationItem]], nDays: Int)(implicit messages:Messages) = {
+  def calibrationMonthlyAllReport(monitor: Monitor.Value, reportDate: DateTime, map: Map[MonitorType.Value, Map[String, Calibration.CalibrationItem]], nDays: Int)(implicit messages: Messages) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("all_calibration_monthly.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
 
@@ -1131,7 +1076,7 @@ object ExcelUtility {
     finishExcel(reportFilePath, pkg, wb)
   }
 
-  def calibrationMonthlyReport(monitor: Monitor.Value, monitorType: MonitorType.Value, reportDate: DateTime, map: Map[String, Calibration.CalibrationItem], nDays: Int)(implicit messages:Messages) = {
+  def calibrationMonthlyReport(monitor: Monitor.Value, monitorType: MonitorType.Value, reportDate: DateTime, map: Map[String, Calibration.CalibrationItem], nDays: Int)(implicit messages: Messages) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("calibration_monthly.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
 
@@ -1180,8 +1125,8 @@ object ExcelUtility {
           sheet.getRow(row).getCell(11).setCellStyle(lawStyle)
           sheet.getRow(row).getCell(11).setCellValue("失敗")
         } else {
-          if (!passStandard(item.z_val, MonitorType.map(item.monitorType).zd_internal)|| 
-              !passStandard(item.sd_pnt, MonitorType.map(item.monitorType).sd_internal)) {
+          if (!passStandard(item.z_val, MonitorType.map(item.monitorType).zd_internal) ||
+            !passStandard(item.sd_pnt, MonitorType.map(item.monitorType).sd_internal)) {
             sheet.getRow(row).getCell(11).setCellStyle(internalStyle)
           }
           sheet.getRow(row).getCell(11).setCellValue("成功")
@@ -1390,7 +1335,7 @@ object ExcelUtility {
     oldForm.map { old => sheet.getRow(84).getCell(5).setCellValue(old.getStrSeq + "/" + old.getStrSeq) }
     sheet.getRow(84).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
     sheet.getRow(85).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
-    
+
     sheet.getRow(89).getCell(2).setCellValue(form.getStrSeq)
     oldForm.map { old => sheet.getRow(89).getCell(5).setCellValue(old.getStrSeq) }
     sheet.getRow(89).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
@@ -1398,18 +1343,18 @@ object ExcelUtility {
     //sheet.getRow(91).getCell(2).setCellValue("用電量：" + form.getStrSeq)
     //oldForm.map { old => sheet.getRow(91).getCell(5).setCellValue(old.getStrSeq) }
     //sheet.getRow(91).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
-      sheet.getRow(92).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
-      sheet.getRow(93).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
-      //sheet.getRow(94).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
-      sheet.getRow(95).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
-      sheet.getRow(96).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
-      
+    sheet.getRow(92).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
+    sheet.getRow(93).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
+    //sheet.getRow(94).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
+    sheet.getRow(95).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
+    sheet.getRow(96).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
+
     sheet.getRow(98).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
     sheet.getRow(99).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
     sheet.getRow(100).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
     sheet.getRow(101).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
     sheet.getRow(102).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
-    
+
     for (row <- 104 to 105) {
       sheet.getRow(row).getCell(2).setCellValue(form.getStrSeq)
       oldForm.map { old => sheet.getRow(row).getCell(5).setCellValue(old.getStrSeq) }
@@ -1556,7 +1501,6 @@ object ExcelUtility {
     sheet.getRow(2).getCell(5).setCellValue(usrName)
     sheet.getRow(41).getCell(5).setCellValue(usrName)
     sheet.getRow(65).getCell(4).setCellValue(usrName)
-
 
     sheet.getRow(5).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
     sheet.getRow(7).getCell(4).setCellValue(form.getBoolSeq("YES☑  NO□", "YES□ NO☑"))
@@ -1804,7 +1748,7 @@ object ExcelUtility {
     finishExcel(reportFilePath, pkg, wb)
   }
 
-  def monitorAbnormalReport(date: DateTime, report: Seq[AbnormalEntry])(implicit messages:Messages) = {
+  def monitorAbnormalReport(date: DateTime, report: Seq[AbnormalEntry])(implicit messages: Messages) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("abnormalReport.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
 
@@ -1873,7 +1817,7 @@ object ExcelUtility {
     finishExcel(reportFilePath, pkg, wb)
   }
 
-  def monitorJournalReport(report: MonitorJournal, invalidHourList: List[(MonitorType.Value, List[MonitorInvalidHour])], userList: List[User])(implicit messages:Messages) = {
+  def monitorJournalReport(report: MonitorJournal, invalidHourList: List[(MonitorType.Value, List[MonitorInvalidHour])], userList: List[User])(implicit messages: Messages) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("monitorJournal.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
 
@@ -1922,7 +1866,7 @@ object ExcelUtility {
     finishExcel(reportFilePath, pkg, wb)
   }
 
-  def minMonthlyReport(monitors: List[Monitor.Value], start: DateTime, callback: (Int) => Unit)(implicit messages:Messages) = {
+  def minMonthlyReport(monitors: List[Monitor.Value], start: DateTime, callback: (Int) => Unit)(implicit messages: Messages) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("minMonthlyReport.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
 
@@ -2020,7 +1964,7 @@ object ExcelUtility {
     finishExcel(reportFilePath, pkg, wb)
   }
 
-  def equipmentHistoryReport(tickets: List[Ticket], start: DateTime, end: DateTime)(implicit messages:Messages) = {
+  def equipmentHistoryReport(tickets: List[Ticket], start: DateTime, end: DateTime)(implicit messages: Messages) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("equipHistory.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val sheet = wb.getSheetAt(0)
