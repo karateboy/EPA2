@@ -213,7 +213,8 @@ class DataLogger extends Controller {
           hrList.foreach { hr =>
             try {
               hr.save(tabType)
-              Uploader.upload(hr, path)
+              if(tabType == TableType.Hour)
+                Uploader.upload(hr, path)
             } catch {
               case ex: Throwable =>
                 Logger.error("Failed to insert=>", ex)
