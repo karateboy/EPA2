@@ -16,11 +16,11 @@ import play.api.i18n._
 
 case class LatestRecordTime(time: Long)
 
-case class RecordList(time: Long, mtDataList: Seq[MtRecord]){
-  def  toHourRecord(monitor: Monitor.Value) = {
+case class RecordList(time: Long, mtDataList: Seq[MtRecord]) {
+  def toHourRecord(monitor: Monitor.Value) = {
     import java.sql.Timestamp
     val tm = new Timestamp(time)
-    Record.HourRecord(monitor.toString(), tm, None, mtDataList)    
+    Record.HourRecord(monitor.toString(), tm, None, mtDataList)
   }
 }
 
@@ -80,10 +80,10 @@ class DataLogger extends Controller {
       r.mtName match {
         case "NH3" =>
           sb.append("FLOW, Status,")
-          
+
         case "TSP" =>
           sb.append("RT, Status,")
-          
+
         case mt: String =>
           sb.append(mt + ", Status,")
       }
@@ -165,12 +165,12 @@ class DataLogger extends Controller {
     sb.toString()
   }
 
-//  def toHourRecord(monitor: Monitor.Value)(recordList: RecordList) = {
-//    import java.sql.Timestamp
-//    val tm = new Timestamp(recordList.time)
-//    val hr = Record.HourRecord(monitor.toString(), tm, None, recordList.mtDataList)
-//    hr
-//  }
+  //  def toHourRecord(monitor: Monitor.Value)(recordList: RecordList) = {
+  //    import java.sql.Timestamp
+  //    val tm = new Timestamp(recordList.time)
+  //    val hr = Record.HourRecord(monitor.toString(), tm, None, recordList.mtDataList)
+  //    hr
+  //  }
 
   def insertDataRecord(tabType: TableType.Value)(monitorStr: String) = Action(BodyParsers.parse.json) {
     implicit request =>
@@ -184,15 +184,7 @@ class DataLogger extends Controller {
           val hrList = recordListSeq.map {
             _.toHourRecord(monitor)
           }
-          
-          hrList.foreach { hr =>
-            try {
-              hr.save(tabType)
-            } catch {
-              case ex: Throwable =>
-                Logger.error("Failed to insert=>", ex)
-            }
-          }
+
           //Export
           import play.api.Play.current
           val path = if (tabType == TableType.Hour)
@@ -200,20 +192,32 @@ class DataLogger extends Controller {
           else
             current.path.getAbsolutePath + "/export/minute/"
 
-          try {
-            recordListSeq map {
-              recordList =>
-                import java.io.FileOutputStream
-                val time = new DateTime(recordList.time)
-                val csvStr = exportCSV(monitor, SystemConfig.getApplyCalibration)(recordList)
-                val fileName = s"${monitor.toString}_${time.toString("YYMMddHHmm")}.csv"
-                val os = new FileOutputStream(path + fileName)
-                os.write(csvStr.getBytes("UTF-8"))
-                os.close()
+          def saveCSV = {
+            try {
+              recordListSeq map {
+                recordList =>
+                  import java.io.FileOutputStream
+                  val time = new DateTime(recordList.time)
+                  val csvStr = exportCSV(monitor, SystemConfig.getApplyCalibration)(recordList)
+                  val fileName = s"${monitor.toString}_${time.toString("YYMMddHHmm")}.csv"
+                  val os = new FileOutputStream(path + fileName)
+                  os.write(csvStr.getBytes("UTF-8"))
+                  os.close()
+              }
+            } catch {
+              case ex: Throwable =>
+                Logger.error("failed to export csv", ex)
             }
-          } catch {
-            case ex: Throwable =>
-              Logger.error("failed to export csv", ex)
+          }
+
+          hrList.foreach { hr =>
+            try {
+              hr.save(tabType)
+              Uploader.upload(hr, path)
+            } catch {
+              case ex: Throwable =>
+                Logger.error("Failed to insert=>", ex)
+            }
           }
 
           Ok(Json.obj("ok" -> true))
