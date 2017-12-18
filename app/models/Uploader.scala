@@ -18,11 +18,11 @@ object Uploader {
   val siteID = cdxConfig.getString("siteID").getOrElse("026")
 
   Logger.info(s"CDX is ${enable}")
-  if(enable){
+  if (enable) {
     Logger.info(s"siteCounty=${siteCounty}")
     Logger.info(s"siteID=${siteID}")
   }
-  
+
   case class ItemIdMap(epaId: Int, itemName: String, itemCode: String, unit: String)
   import MonitorType._
   val itemIdMap = Map(
@@ -76,10 +76,14 @@ object Uploader {
     </aqs:AirQualityData>
   }
 
-  def getXml(path:String, hr: HourRecord) = {
+  def getXml(path: String, hr: HourRecord) = {
     import scala.xml._
-    val xmlList = hr.dataList.map { mtRecord =>
-      mtRecprdToXML(siteCounty, siteID, hr.date, mtRecord)
+    val xmlList = hr.dataList.flatMap { mtRecord =>
+      val mt = MonitorType.withName(mtRecord.mtName)
+      if (itemIdMap.contains(mt))
+        Some(mtRecprdToXML(siteCounty, siteID, hr.date, mtRecord))
+      else
+        None
     }
     val nowStr = DateTime.now().toString("YYYY-MM-dd_hh:mm:ss")
 
@@ -90,13 +94,13 @@ object Uploader {
         { xmlList }
       </aqs:AirQualitySubmission>
 
-    val tempFile = s"${hr.date.toString("YYYYMMdd")}.xml"
+    val tempFile = s"${serviceID}_${hr.date.toString("MMdd")}${hr.date.getHourOfDay}_${user}.xml"
     scala.xml.XML.save(path + tempFile, xml, "UTF-8", true)
     //scala.io.Source.fromFile(tempFile)("UTF-8").mkString
     xml.toString
   }
 
-  def upload(hr: HourRecord, localPath:String) = {
+  def upload(hr: HourRecord, localPath: String) = {
     val xmlStr = getXml(localPath, hr)
     if (enable) {
       val fileName = s"${serviceID}_${hr.date.toString("MMdd")}${hr.date.getHourOfDay}_${user}.xml"

@@ -68,25 +68,17 @@ object Record {
       val pairSeq = dataList map {
         mtRecord =>
           val mt = MonitorType.withName(mtRecord.mtName)
-          val value = (Some(mtRecord.value.toFloat):Option[Float], Some(mtRecord.status):Option[String])
+          val value = (Some(mtRecord.value.toFloat): Option[Float], Some(mtRecord.status): Option[String])
           mt -> value
       }
 
       pairSeq.toMap
     }
-    
-    def recordMap = {
-      val pairSeq = dataList map {
-        mtRecord =>
-          val mt = MonitorType.withName(mtRecord.mtName)
-          val value = (Some(mtRecord.value.toFloat), Some(mtRecord.status))
-          mt -> value
-      }
 
-      val valueMap = pairSeq.toMap
+    def recordMap = {
+      val vMap = valueMap
       def optMap(mt: MonitorType.Value) = {
-        val valueMap = pairSeq.toMap
-        valueMap.getOrElse(mt, (None, None))
+        vMap.getOrElse(mt, (None, None))
       }
       optMap _
     }
@@ -241,11 +233,26 @@ object Record {
     projection _
   }
 
-  def updateRecordStatus(tabType: TableType.Value, monitor: Monitor.Value, monitorType: MonitorType.Value, mill: Long, status: String)(implicit session: DBSession = AutoSession) = {
-    val recordTime = new Timestamp(mill)
+  def updateRecordStatus(tabType: TableType.Value, monitor: Monitor.Value, 
+      monitorType: MonitorType.Value, mill: Long, newStatus: String)(implicit session: DBSession = AutoSession) = {
+    val recordTime: DateTime = new Timestamp(mill)
     val monitorName = monitor.toString()
     val tab_name = getTabName(tabType)
-    Logger.warn("FIXME updateRecordStatus()")
+
+    val hr = if (tabType == TableType.Hour)
+      Record.getHourRecords(monitor, recordTime, recordTime + 1.hour).head
+    else
+      Record.getMinRecords(monitor, recordTime, recordTime + 1.minute).head
+
+    val updatedDataList = hr.dataList.map { mtr =>
+      val mt = MonitorType.withName(mtr.mtName)
+      if (mt == monitorType)
+        MtRecord(mtr.mtName, mtr.value, newStatus)
+      else
+        mtr
+    }
+    val newHr = HourRecord(hr.monitor, hr.date, hr.chk, updatedDataList)
+    newHr.save(tabType)
   }
 
   def emptyRecord(monitor: String, start: DateTime) = {
