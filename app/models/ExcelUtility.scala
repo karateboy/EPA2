@@ -287,7 +287,8 @@ object ExcelUtility {
         (mt, idx) <- MonitorType.monitorReportList.zipWithIndex
         col = idx + 1
       } {
-        if (mtDataMap.contains(mt)) {
+        
+        if (mtDataMap.contains(mt) && Monitor.map(monitor).monitorTypes.contains(mt)) {
           val mtRecord = mtDataMap(mt)
           for {
             row <- 5 to (5 + mtRecord.dataList.length - 1)
@@ -331,7 +332,7 @@ object ExcelUtility {
         (mt, idx) <- MonitorType.monitorReportList.zipWithIndex
         col = idx + 1
       } {
-        if (mtDataMap.contains(mt)) {
+        if (mtDataMap.contains(mt) && Monitor.map(monitor).monitorTypes.contains(mt)) {
           val mtRecord = mtDataMap(mt)
           val normalStyle = createStyle(mtRecord.monitorType)
           val abnormalStyles = createColorStyle(abnormalColor, mt)
