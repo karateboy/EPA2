@@ -20,7 +20,6 @@ server.pid
 /.idea
 /.settings
 /.sbtserver
-/conf/application.conf
 /conf/system.properties
 /notification
 /public/images/realtime.jpg

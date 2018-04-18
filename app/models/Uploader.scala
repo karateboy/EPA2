@@ -23,6 +23,9 @@ object Uploader {
     Logger.info(s"siteID=${siteID}")
   }
 
+  def init = {
+    Logger.info("CDX is ready!")
+  }
   case class ItemIdMap(epaId: Int, itemName: String, itemCode: String, unit: String)
   import MonitorType._
   val itemIdMap = Map(

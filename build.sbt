@@ -1,11 +1,11 @@
 
 name := """epa2"""
 
-version := "1.0.13"
+version := "1.0.14"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.11.11"
 
 libraryDependencies ++= Seq(
   jdbc,  
