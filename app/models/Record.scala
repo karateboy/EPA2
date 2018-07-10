@@ -9,12 +9,12 @@ import models._
 import play.api.i18n._
 
 case class Stat(
-    avg: Option[Float],
-    min: Option[Float],
-    max: Option[Float],
-    count: Int,
-    total: Int,
-    overCount: Int) {
+  avg:       Option[Float],
+  min:       Option[Float],
+  max:       Option[Float],
+  count:     Int,
+  total:     Int,
+  overCount: Int) {
   val effectPercent = if (total != 0) Some(count.toFloat * 100 / total) else None
   val overPercent = if (total != 0) Some(overCount.toFloat * 100 / total) else None
 }
@@ -40,10 +40,10 @@ case class MtRecord(mtName: String, value: Double, status: String)
 
 object Record {
   case class HourRecord(
-      monitor: String,
-      date: Timestamp,
-      chk: Option[String] = None,
-      dataList: Seq[MtRecord] = Seq.empty[MtRecord]) {
+    monitor:  String,
+    date:     Timestamp,
+    chk:      Option[String] = None,
+    dataList: Seq[MtRecord]  = Seq.empty[MtRecord]) {
 
     def save(tab: TableType.Value) {
       val tab_name = Record.getTabName(tab)
@@ -65,11 +65,16 @@ object Record {
     }
 
     def valueMap = {
-      val pairSeq = dataList map {
+      val pairSeq = dataList flatMap {
         mtRecord =>
-          val mt = MonitorType.withName(mtRecord.mtName)
-          val value = (Some(mtRecord.value.toFloat): Option[Float], Some(mtRecord.status): Option[String])
-          mt -> value
+          try {
+            val mt = MonitorType.withName(mtRecord.mtName)
+            val value = (Some(mtRecord.value.toFloat): Option[Float], Some(mtRecord.status): Option[String])
+            Some(mt -> value)
+          } catch {
+            case x: java.util.NoSuchElementException =>
+              None
+          }
       }
 
       pairSeq.toMap
@@ -85,12 +90,12 @@ object Record {
   }
 
   case class SixSecRecord(
-    monitor: Monitor.Value,
-    time: DateTime,
-    winSpeed: Seq[Option[Float]],
+    monitor:       Monitor.Value,
+    time:          DateTime,
+    winSpeed:      Seq[Option[Float]],
     winSpeed_stat: Seq[Option[String]],
-    winDir: Seq[Option[Float]],
-    winDir_stat: Seq[Option[String]])
+    winDir:        Seq[Option[Float]],
+    winDir_stat:   Seq[Option[String]])
 
   type MinRecord = HourRecord
 
@@ -233,8 +238,8 @@ object Record {
     projection _
   }
 
-  def updateRecordStatus(tabType: TableType.Value, monitor: Monitor.Value, 
-      monitorType: MonitorType.Value, mill: Long, newStatus: String)(implicit session: DBSession = AutoSession) = {
+  def updateRecordStatus(tabType: TableType.Value, monitor: Monitor.Value,
+                         monitorType: MonitorType.Value, mill: Long, newStatus: String)(implicit session: DBSession = AutoSession) = {
     val recordTime: DateTime = new Timestamp(mill)
     val monitorName = monitor.toString()
     val tab_name = getTabName(tabType)
@@ -264,7 +269,7 @@ object Record {
 
   case class RecordValidationReport(start: DateTime, end: DateTime,
                                     hourReport: Map[Monitor.Value, Int],
-                                    minReport: Map[Monitor.Value, Int])
+                                    minReport:  Map[Monitor.Value, Int])
 
   def getRecordValidationReport(start: DateTime, end: DateTime) = {
     DB readOnly { implicit session =>
@@ -421,7 +426,7 @@ object Record {
                      monitorStatusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData) = {
 
     DB readOnly { implicit session =>
-      //Apply calibration 
+      //Apply calibration
       val calibrationMap = Calibration.getDailyCalibrationMap(monitor, start)
 
       val originalList = getHourRecords(monitor, start, start + 1.day)
