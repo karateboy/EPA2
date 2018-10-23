@@ -160,6 +160,7 @@ object MonitorType extends Enumeration {
   //New Mt
 
   val psiList = List(PM10, SO2, CO, O3, NO2)
+  val aqiList = List(O3, PM25, PM10, CO, SO2, NO2)
   val windDirList = List(MonitorType.withName("WD_DIR"))
 
   val monitorReportList =

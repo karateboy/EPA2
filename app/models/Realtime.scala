@@ -12,6 +12,521 @@ import models.Record._
 case class RealtimeStatus(data: Map[Monitor.Value, Map[MonitorType.Value, (Option[Float], Option[String])]])
 //case class SixSecRecord(c911: Array[(Option[Float], Option[String])], c912: Array[(Option[Float], Option[String])])
 case class WeatherStat(windSpeed: Option[Float], windDir: Option[Float])
+
+case class AqiReport(aqi: Option[Float], sub_map: Map[AQI.Value, (Option[Float], Option[Float])])
+
+object AQI extends Enumeration {
+  val O3_8hr = Value
+  val O3 = Value
+  val pm25 = Value
+  val pm10 = Value
+  val CO_8hr = Value
+  val SO2 = Value
+  val SO2_24hr = Value
+  val NO2 = Value
+  def desc = Map(
+    O3_8hr -> "臭氧\n(ppm)\n八小時平均值",
+    O3 -> "臭氧\n(ppm)\n小時平均值",
+    pm25 -> "PM2.5\n(μg/m3)\n平均值",
+    pm10 -> "PM10\n(μg/m3 )\n平均值",
+    CO_8hr -> "CO\n(ppm)\n8小時平均值",
+    SO2 -> "SO2\n(ppb)\n小時平均值",
+    SO2_24hr -> "SO2\n(ppb)\n24小時平均值",
+    NO2 -> "NO2\n(ppb)\n小時平均值")
+  def mtMap = Map(
+    O3_8hr -> MonitorType.O3,
+    O3 -> MonitorType.O3,
+    pm25 -> MonitorType.PM25,
+    pm10 -> MonitorType.PM10,
+    CO_8hr -> MonitorType.CO,
+    SO2 -> MonitorType.SO2,
+    SO2_24hr -> MonitorType.SO2,
+    NO2 -> MonitorType.NO2)
+
+  val realtimeList = List(O3_8hr, O3, pm25, pm10, CO_8hr, SO2, SO2_24hr, NO2)
+  val dailyList = List(O3_8hr, O3, pm25, pm10, CO_8hr, SO2, NO2)
+
+  def o3_8AQI(ov: Option[Float]) = {
+    if (ov.isEmpty || ov.get > 200)
+      None
+    else
+      Some {
+        val v = ov.get
+
+        if (v <= 54) {
+          v / 54f * 50
+        } else if (v <= 70f) {
+          51 + (v - 55f) / (70f - 55f) * 50
+        } else if (v <= 85f) {
+          101 + (v - 71f) / (85f - 71f) * 50
+        } else if (v <= 105f) {
+          151 + (v - 86f) / (105f - 86f) * 50
+        } else {
+          201 + (v - 106f) / (200f - 106f) * 100
+        }
+      }
+  }
+
+  def o3AQI(ov: Option[Float]) = {
+    if (ov.isEmpty || ov.get < 125f)
+      None
+    else
+      Some {
+        val v = ov.get
+
+        if (v <= 164f) {
+          101 + (v - 125f) / (164f - 125f) * 50
+        } else if (v <= 204f) {
+          151 + (v - 165f) / (204f - 165f) * 50
+        } else if (v <= 404f) {
+          201 + (v - 205f) / (404f - 205f) * 100
+        } else if (v <= 504f) {
+          301 + (v - 405f) / (504f - 405f) * 100
+        } else {
+          401 + (v - 505f) / (604f - 505f) * 100
+        }
+      }
+  }
+
+  def pm25AQI(ov: Option[Float]) = {
+    if (ov.isEmpty)
+      None
+    else
+      Some {
+        val v = ov.get
+
+        if (v <= 15.4f) {
+          v / 15.4f * 50
+        } else if (v <= 35.4f) {
+          51 + (v - 15.5f) / (35.4f - 15.5f) * 50
+        } else if (v <= 54.4f) {
+          101 + (v - 35.5f) / (54.4f - 35.5f) * 50
+        } else if (v <= 150.4f) {
+          151 + (v - 54.5f) / (150.4f - 54.5f) * 50
+        } else if (v <= 250.4f) {
+          201 + (v - 150.5f) / (250.4f - 150.5f) * 100
+        } else if (v <= 350.4f) {
+          301 + (v - 250.5f) / (350.4f - 250.5f) * 100
+        } else {
+          401 + (v - 350.5f) / (500.4f - 350.5f) * 100
+        }
+      }
+  }
+
+  def pm10AQI(ov: Option[Float]) = {
+    if (ov.isEmpty)
+      None
+    else
+      Some {
+        val v = ov.get
+
+        if (v <= 54f) {
+          v / 54f * 50
+        } else if (v <= 125f) {
+          51 + (v - 55f) / (125f - 55f) * 50
+        } else if (v <= 254f) {
+          101 + (v - 126f) / (254f - 126f) * 50
+        } else if (v <= 354f) {
+          151 + (v - 255f) / (354f - 255f) * 50
+        } else if (v <= 424f) {
+          201 + (v - 355f) / (424f - 355f) * 100
+        } else if (v <= 504f) {
+          301 + (v - 425f) / (504f - 425f) * 100
+        } else {
+          401 + (v - 505f) / (604f - 505f) * 100
+        }
+      }
+  }
+
+  def co_8AQI(ov: Option[Float]) = {
+    if (ov.isEmpty)
+      None
+    else
+      Some {
+        val v = ov.get
+
+        if (v <= 4.4f) {
+          v / 4.4f * 50
+        } else if (v <= 9.4f) {
+          51 + (v - 4.5f) / (9.4f - 4.5f) * 50
+        } else if (v <= 12.4f) {
+          101 + (v - 9.5f) / (12.4f - 9.5f) * 50
+        } else if (v <= 15.4f) {
+          151 + (v - 12.5f) / (15.4f - 12.5f) * 50
+        } else if (v <= 30.4f) {
+          201 + (v - 15.5f) / (30.4f - 15.5f) * 100
+        } else if (v <= 40.4f) {
+          301 + (v - 30.5f) / (40.4f - 30.4f) * 100
+        } else {
+          401 + (v - 40.5f) / (604f - 50.4f) * 100
+        }
+      }
+  }
+
+  def so2AQI(ov: Option[Float]) = {
+    if (ov.isEmpty || ov.get >= 186)
+      None
+    else
+      Some {
+        val v = ov.get
+
+        if (v <= 35f) {
+          v / 35f * 50
+        } else if (v <= 75f) {
+          51 + (v - 36f) / (75f - 36f) * 50
+        } else {
+          101 + (v - 76f) / (185f - 76f) * 50
+        }
+      }
+  }
+
+  def so2_24AQI(ov: Option[Float]) = {
+    if (ov.isEmpty || ov.get < 186)
+      None
+    else
+      Some {
+        val v = ov.get
+
+        if (v <= 304f) {
+          151 + (v - 186f) / (304f - 186f) * 50
+        } else if (v <= 604f) {
+          201 + (v - 305f) / (604f - 305f) * 100
+        } else if (v <= 804f) {
+          301 + (v - 605f) / (804f - 605f) * 100
+        } else {
+          401 + (v - 805f) / (1004f - 805f) * 100
+        }
+      }
+  }
+
+  def no2AQI(ov: Option[Float]) = {
+    if (ov.isEmpty)
+      None
+    else
+      Some {
+        val v = ov.get
+
+        if (v <= 53f) {
+          v / 53f * 50
+        } else if (v <= 100f) {
+          51 + (v - 54f) / (100f - 54f) * 50
+        } else if (v <= 360f) {
+          101 + (v - 101f) / (360f - 101f) * 50
+        } else if (v <= 649f) {
+          151 + (v - 361f) / (649f - 361f) * 50
+        } else if (v <= 1249f) {
+          201 + (v - 650f) / (1249f - 650f) * 100
+        } else if (v <= 1649f) {
+          301 + (v - 1250f) / (1649f - 1250f) * 100
+        } else {
+          401 + (v - 1650f) / (2049f - 1650f) * 100
+        }
+      }
+  }
+
+  def getAqiLevel(v: Float) = {
+    if (v <= 50)
+      "AQI1"
+    else if (v <= 100)
+      "AQI2"
+    else if (v <= 150)
+      "AQI3"
+    else if (v <= 200)
+      "AQI4"
+    else if (v <= 300)
+      "AQI5"
+    else
+      "AQI6"
+  }
+
+  import Realtime._
+
+  def getRealtimeAQI(lastHour: DateTime)(implicit session: DBSession = AutoSession) = {
+    val result =
+      for {
+        m <- Monitor.mvList
+      } yield {
+        m -> getMonitorRealtimeAQI(m, lastHour)
+      }
+    Map(result: _*)
+  }
+
+  def getMonitorRealtimeAQI(monitor: Monitor.Value, thisHour: DateTime)(implicit session: DBSession = AutoSession) = {
+    val o3 = getMonitorTypeAvg(monitor, MonitorType.O3, thisHour, thisHour + 1.hour, 1)
+    val o3_8 = getMonitorTypeAvg(monitor, MonitorType.O3, thisHour - 7.hour, thisHour + 1.hour, 6)
+    val pm10_12 = getMonitorTypeAvg(monitor, MonitorType.PM10, thisHour - 11.hour, thisHour + 1.hour, 6)
+    val pm10_4 = getMonitorTypeAvg(monitor, MonitorType.PM10, thisHour - 3.hour, thisHour + 1.hour, 1)
+    val pm10 = for (v1 <- pm10_12; v2 <- pm10_4) yield (v1 + v2) / 2
+
+    val pm25_12 = getMonitorTypeAvg(monitor, MonitorType.PM25, thisHour - 11.hour, thisHour + 1.hour, 6)
+    val pm25_4 = getMonitorTypeAvg(monitor, MonitorType.PM25, thisHour - 3.hour, thisHour + 1.hour, 1)
+    val pm25 = for (v1 <- pm25_12; v2 <- pm25_4) yield (v1 + v2) / 2
+
+    val co_8 = getMonitorTypeAvg(monitor, MonitorType.CO, thisHour - 7.hour, thisHour + 1.hour, 6)
+    val so2 = getMonitorTypeAvg(monitor, MonitorType.SO2, thisHour, thisHour + 1.hour, 1)
+    val so2_24 = getMonitorTypeAvg(monitor, MonitorType.SO2, thisHour - 23, thisHour + 1.hour, 1)
+    val no2 = getMonitorTypeAvg(monitor, MonitorType.NO2, thisHour, thisHour + 1.hour, 1)
+
+    val result = Map[AQI.Value, (Option[Float], Option[Float])](
+      AQI.O3_8hr -> (o3_8, o3_8AQI(o3_8)),
+      AQI.O3 -> (o3, o3AQI(o3)),
+      AQI.pm25 -> (pm25, pm25AQI(pm25)),
+      AQI.pm10 -> (pm10, pm10AQI(pm10)),
+      AQI.CO_8hr -> (co_8, co_8AQI(co_8)),
+      AQI.SO2 -> (so2, so2AQI(so2)),
+      AQI.SO2_24hr -> (so2_24, so2_24AQI(so2_24)),
+      AQI.NO2 -> (no2, no2AQI(no2)))
+    val sub_aqi = result.values.map(_._2)
+    val aqi = sub_aqi.toList.max
+
+    (aqi, result)
+  }
+
+  def getMonitorDailyAQI(monitor: Monitor.Value, thisDay: DateTime) = {
+    val dayReport =
+      getDailyReport(monitor, thisDay, MonitorType.aqiList)
+
+    val mapPair =
+      for {
+        mtRecord <- dayReport.typeList
+      } yield {
+        val mt = mtRecord.monitorType
+        val dataList = mtRecord.dataList map (d => (d._2, d._3))
+        mt -> dataList
+      }
+
+    val dailyMap = mapPair.toMap
+
+    getMonitorDailyAQIfromMap(0, dailyMap)
+  }
+
+  def getEpaDailyAQI(monitor: EpaMonitor.Value, current: DateTime)(implicit session: DBSession = AutoSession) = {
+    val pm25 = getEpaMTypeAvg(getEpaHourRecord(monitor, MonitorType.PM25, current, current + 1.day), 16)
+    val pm10 = getEpaMTypeAvg(getEpaHourRecord(monitor, MonitorType.PM10, current, current + 1.day), 16)
+    val so2 = getEpaMTypeMax(getEpaHourRecord(monitor, MonitorType.SO2, current, current + 1.day), 16)
+    val no2 = getEpaMTypeMax(getEpaHourRecord(monitor, MonitorType.NO2, current, current + 1.day), 16)
+
+    val o3 = getEpaMTypeMax(getEpaHourRecord(monitor, MonitorType.O3, current, current + 1.day), 16)
+    val o3_8 = getEpa8HourAvgMax(getEpaHourRecord(monitor, MonitorType.O3, current, current + 1.day), current, current + 1.day)
+    val co_8 = getEpa8HourAvgMax(getEpaHourRecord(monitor, MonitorType.CO, current, current + 1.day), current, current + 1.day)
+
+    val result = Map[AQI.Value, (Option[Float], Option[Float])](
+      AQI.O3_8hr -> (o3_8, o3_8AQI(o3_8)),
+      AQI.O3 -> (o3, o3AQI(o3)),
+      AQI.pm25 -> (pm25, pm25AQI(pm25)),
+      AQI.pm10 -> (pm10, pm10AQI(pm10)),
+      AQI.CO_8hr -> (co_8, co_8AQI(co_8)),
+      AQI.SO2 -> (so2, so2AQI(so2)),
+      AQI.NO2 -> (no2, no2AQI(no2)))
+    val sub_aqi = result.values.map(_._2)
+    val aqi = sub_aqi.toList.max
+
+    AqiReport(aqi, result)
+  }
+
+  def getMonitorDailyAQIfromMap(
+    dayStartHour: Int,
+    map:          Map[MonitorType.Value, List[(Option[Float], Option[String])]]) = {
+    def getMonitorTypeAvg(
+      mt:    MonitorType.Value,
+      start: Int, end: Int, validMin: Int) = {
+      val records = map(mt).slice(start, end)
+      val validValues = records.filter(statusFilter(MonitorStatusFilter.ValidData)).map(_._1.get)
+      val total = validValues.length
+      if (total < validMin)
+        None
+      else {
+        val sum = validValues.sum
+        Some(sum / total)
+      }
+    }
+
+    def getMonitorTypeMax(
+      mt:    MonitorType.Value,
+      start: Int, end: Int) = {
+      val records = map(mt).slice(start, end)
+      val validValues = records.filter(statusFilter(MonitorStatusFilter.ValidData)).map(_._1.get)
+      val total = validValues.length
+      if (total == 0)
+        None
+      else
+        Some(validValues.max)
+    }
+
+    def getMonitorType8HourAvgMax(mt: MonitorType.Value, start: Int, end: Int) = {
+      def get8hrAvg(data: List[(Option[Float], Option[String])]) = {
+        val validValues = data.filter(statusFilter(MonitorStatusFilter.ValidData)).map(_._1.get)
+        val total = validValues.length
+        if (total < 6)
+          None
+        else
+          Some(validValues.sum / total)
+      }
+
+      val records = map(mt).slice(start, end)
+      val movingAvg =
+        for {
+          start <- 0 to records.length - 8
+          data = records.slice(start, start + 8)
+        } yield get8hrAvg(data)
+
+      val sum = movingAvg.flatMap { x => x }.sum
+      val count = movingAvg.count { _.isDefined }
+      if (count != 0)
+        movingAvg.max
+      else
+        None
+
+    }
+
+    val pm25 = getMonitorTypeAvg(MonitorType.PM25, dayStartHour, dayStartHour + 24, 16)
+    val pm10 = getMonitorTypeAvg(MonitorType.PM10, dayStartHour, dayStartHour + 24, 16)
+    val so2 = getMonitorTypeMax(MonitorType.SO2, dayStartHour, dayStartHour + 24)
+    val no2 = getMonitorTypeMax(MonitorType.NO2, dayStartHour, dayStartHour + 24)
+
+    val o3 = getMonitorTypeMax(MonitorType.O3, dayStartHour, dayStartHour + 24)
+    val o3_8 = getMonitorType8HourAvgMax(MonitorType.O3, dayStartHour, dayStartHour + 24)
+    val co_8 = getMonitorType8HourAvgMax(MonitorType.CO, dayStartHour, dayStartHour + 24)
+
+    val result = Map[AQI.Value, (Option[Float], Option[Float])](
+      AQI.O3_8hr -> (o3_8, o3_8AQI(o3_8)),
+      AQI.O3 -> (o3, o3AQI(o3)),
+      AQI.pm25 -> (pm25, pm25AQI(pm25)),
+      AQI.pm10 -> (pm10, pm10AQI(pm10)),
+      AQI.CO_8hr -> (co_8, co_8AQI(co_8)),
+      AQI.SO2 -> (so2, so2AQI(so2)),
+      AQI.NO2 -> (no2, no2AQI(no2)))
+    val sub_aqi = result.values.map(_._2)
+    val aqi = sub_aqi.toList.max
+
+    AqiReport(aqi, result)
+  }
+
+  def getRealtimeAqiTrend(m: Monitor.Value, start: DateTime, end: DateTime) = {
+    import Record._
+    val duration = new Duration(start, end)
+    val dayReports =
+      for (delta <- 0 to duration.getStandardDays.toInt) yield {
+        getDailyReport(m, start + delta.day, MonitorType.aqiList)
+      }
+    val lastDayReport = getDailyReport(m, start - 1.day, MonitorType.aqiList)
+
+    val totalReport = dayReports.foldLeft(lastDayReport)((d1, d2) =>
+      {
+        val zipList = d1.typeList.zip(d2.typeList)
+        val newTlist = zipList.map { z =>
+          MonitorTypeRecord(z._1.monitorType, z._1.dataList ++ z._2.dataList, z._1.stat)
+
+        }
+        DailyReport(newTlist)
+      })
+
+    val mapPair =
+      for {
+        mtRecord <- totalReport.typeList
+      } yield {
+        val mt = mtRecord.monitorType
+        val dataList = mtRecord.dataList map (d => (d._2, d._3))
+        mt -> dataList
+      }
+
+    val dailyMap = mapPair.toMap
+
+    val timePsiPair =
+      for {
+        hr <- 24 to (24 + duration.getStandardDays.toInt * 24)
+      } yield {
+        start + (hr - 24).hour -> getMonitorRealtimeAQIfromMap(hr, dailyMap)._1
+      }
+    timePsiPair.filter(_._2.isDefined).map(p => p._1 -> p._2.get).toMap
+  }
+
+  def getMonitorRealtimeAQIfromMap(
+    thisHour: Int,
+    map:      Map[MonitorType.Value, List[(Option[Float], Option[String])]]) = {
+    def getMonitorTypeAvg(
+      mt:    MonitorType.Value,
+      start: Int, end: Int, validMin: Int) = {
+      val records = map(mt).slice(start, end)
+      val validValues = records.filter(statusFilter(MonitorStatusFilter.ValidData)).map(_._1.get)
+      val total = validValues.length
+      if (total < validMin)
+        None
+      else {
+        val sum = validValues.sum
+        Some(sum / total)
+      }
+    }
+
+    val o3 = getMonitorTypeAvg(MonitorType.O3, thisHour, thisHour + 1, 1)
+    val o3_8 = getMonitorTypeAvg(MonitorType.O3, thisHour - 7, thisHour + 1, 6)
+    val pm10_12 = getMonitorTypeAvg(MonitorType.PM10, thisHour - 11, thisHour + 1, 6)
+    val pm10_4 = getMonitorTypeAvg(MonitorType.PM10, thisHour - 3, thisHour + 1, 1)
+    val pm10 = for (v1 <- pm10_12; v2 <- pm10_4) yield (v1 + v2) / 2
+
+    val pm25_12 = getMonitorTypeAvg(MonitorType.PM25, thisHour - 11, thisHour + 1, 6)
+    val pm25_4 = getMonitorTypeAvg(MonitorType.PM25, thisHour - 3, thisHour + 1, 1)
+    val pm25 = for (v1 <- pm25_12; v2 <- pm25_4) yield (v1 + v2) / 2
+
+    val co_8 = getMonitorTypeAvg(MonitorType.CO, thisHour - 7, thisHour + 1, 6)
+    val so2 = getMonitorTypeAvg(MonitorType.SO2, thisHour, thisHour + 1, 1)
+    val so2_24 = getMonitorTypeAvg(MonitorType.SO2, thisHour - 23, thisHour + 1, 1)
+    val no2 = getMonitorTypeAvg(MonitorType.NO2, thisHour, thisHour + 1, 1)
+
+    val result = Map[AQI.Value, (Option[Float], Option[Float])](
+      AQI.O3_8hr -> (o3_8, o3_8AQI(o3_8)),
+      AQI.O3 -> (o3, o3AQI(o3)),
+      AQI.pm25 -> (pm25, pm25AQI(pm25)),
+      AQI.pm10 -> (pm10, pm10AQI(pm10)),
+      AQI.CO_8hr -> (co_8, co_8AQI(co_8)),
+      AQI.SO2 -> (so2, so2AQI(so2)),
+      AQI.SO2_24hr -> (so2_24, so2_24AQI(so2_24)),
+      AQI.NO2 -> (no2, no2AQI(no2)))
+    val sub_aqi = result.values.map(_._2)
+    val aqi = sub_aqi.toList.max
+
+    (aqi, result)
+  }
+
+  def getEpaRealtimeAQI(monitor: EpaMonitor.Value, thisHour: DateTime)(implicit session: DBSession = AutoSession) = {
+    val o3 = getEpaMTypeAvg(getEpaHourRecord(monitor, MonitorType.O3, thisHour, thisHour + 1.hour), 1)
+    val o3_8 = getEpaMTypeAvg(getEpaHourRecord(monitor, MonitorType.O3, thisHour - 7.hour, thisHour + 1.hour), 6)
+    val pm10_12 = getEpaMTypeAvg(getEpaHourRecord(monitor, MonitorType.PM10, thisHour - 11.hour, thisHour + 1.hour), 6)
+    val pm10_4 = getEpaMTypeAvg(getEpaHourRecord(monitor, MonitorType.PM10, thisHour - 3.hour, thisHour + 1.hour), 1)
+    val pm10 = for (v1 <- pm10_12; v2 <- pm10_4) yield (v1 + v2) / 2
+
+    val pm25_12 = getEpaMTypeAvg(getEpaHourRecord(monitor, MonitorType.PM25, thisHour - 11.hour, thisHour + 1.hour), 6)
+    val pm25_4 = getEpaMTypeAvg(getEpaHourRecord(monitor, MonitorType.PM25, thisHour - 3.hour, thisHour + 1.hour), 1)
+    val pm25 = for (v1 <- pm25_12; v2 <- pm25_4) yield (v1 + v2) / 2
+
+    val co_8 = getEpaMTypeAvg(getEpaHourRecord(monitor, MonitorType.CO, thisHour - 7.hour, thisHour + 1.hour), 6)
+    val so2 = getEpaMTypeAvg(getEpaHourRecord(monitor, MonitorType.SO2, thisHour, thisHour + 1.hour), 1)
+    val so2_24 = getEpaMTypeAvg(getEpaHourRecord(monitor, MonitorType.SO2, thisHour - 23, thisHour + 1.hour), 1)
+    val no2 = getEpaMTypeAvg(getEpaHourRecord(monitor, MonitorType.NO2, thisHour, thisHour + 1.hour), 1)
+
+    val result = Map[AQI.Value, (Option[Float], Option[Float])](
+      AQI.O3_8hr -> (o3_8, o3_8AQI(o3_8)),
+      AQI.O3 -> (o3, o3AQI(o3)),
+      AQI.pm25 -> (pm25, pm25AQI(pm25)),
+      AQI.pm10 -> (pm10, pm10AQI(pm10)),
+      AQI.CO_8hr -> (co_8, co_8AQI(co_8)),
+      AQI.SO2 -> (so2, so2AQI(so2)),
+      AQI.SO2_24hr -> (so2_24, so2_24AQI(so2_24)),
+      AQI.NO2 -> (no2, no2AQI(no2)))
+    val sub_aqi = result.values.map(_._2)
+    val aqi = sub_aqi.toList.max
+
+    (aqi, result)
+  }
+
+  def getMonitorMonthlyAQI(monitor: Monitor.Value, start: DateTime) = {
+    val days = getPeriods(start, start + 1.month, 1.day)
+    for (day <- days)
+      yield getMonitorDailyAQI(monitor, day)
+  }
+
+}
+
 object Realtime {
   def getRealtimeMinStatus(current: DateTime, privilege: Privilege) = {
 
@@ -37,9 +552,9 @@ object Realtime {
 
           val hr = hrMap.getOrElse(m, emptyRecord(Monitor.map(m).id, current))
           hr.recordMap
-//          val type_record = monitorTypeProject2
-//            .map(
-//              t => (t._1 -> t._2(hr)))
+          //          val type_record = monitorTypeProject2
+          //            .map(
+          //              t => (t._1 -> t._2(hr)))
           (m -> hr.recordMap)
         }
       Map(rt_result: _*)
@@ -258,10 +773,12 @@ object Realtime {
     } yield Math.round(pm25_12 / 2 + pm25_4 / 2)
   }
 
-  def getMonitorRealtimePSIfromMap(thisHour: Int,
-                                   map: Map[MonitorType.Value, List[(Option[Float], Option[String])]]) = {
-    def getMonitorTypeAvg(mt: MonitorType.Value,
-                          start: Int, end: Int, validMin: Int) = {
+  def getMonitorRealtimePSIfromMap(
+    thisHour: Int,
+    map:      Map[MonitorType.Value, List[(Option[Float], Option[String])]]) = {
+    def getMonitorTypeAvg(
+      mt:    MonitorType.Value,
+      start: Int, end: Int, validMin: Int) = {
       val records = map(mt).slice(start, end)
       val validValues = records.filter(statusFilter(MonitorStatusFilter.ValidData)).map(_._1.get)
       val total = validValues.length
@@ -348,16 +865,17 @@ object Realtime {
   case class PsiReport(psi: Option[Float], sub_map: Map[MonitorType.Value, (Option[Float], Option[Float])])
 
   def getMonitorMonthlyPSI(monitor: Monitor.Value, start: DateTime) = {
-    val days = getPeriods(start, start+1.month, 1.day)
-    for(day<-days)
-      yield
-      getMonitorDailyPSI(monitor, day)
+    val days = getPeriods(start, start + 1.month, 1.day)
+    for (day <- days)
+      yield getMonitorDailyPSI(monitor, day)
   }
 
-  def getMonitorDailyPSIfromMap(dayStartHour: Int,
-                                map: Map[MonitorType.Value, List[(Option[Float], Option[String])]]) = {
-    def getMonitorTypeAvg(mt: MonitorType.Value,
-                          start: Int, end: Int, validMin: Int) = {
+  def getMonitorDailyPSIfromMap(
+    dayStartHour: Int,
+    map:          Map[MonitorType.Value, List[(Option[Float], Option[String])]]) = {
+    def getMonitorTypeAvg(
+      mt:    MonitorType.Value,
+      start: Int, end: Int, validMin: Int) = {
       val records = map(mt).slice(start, end)
       val validValues = records.filter(statusFilter(MonitorStatusFilter.ValidData)).map(_._1.get)
       val total = validValues.length
@@ -368,8 +886,9 @@ object Realtime {
         Some(sum / total)
       }
     }
-    def getMonitorTypeMax(mt: MonitorType.Value,
-                          start: Int, end: Int, validMin: Int) = {
+    def getMonitorTypeMax(
+      mt:    MonitorType.Value,
+      start: Int, end: Int, validMin: Int) = {
       val records = map(mt).slice(start, end)
       val validValues = records.filter(statusFilter(MonitorStatusFilter.ValidData)).map(_._1.get)
       val total = validValues.length

@@ -43,6 +43,12 @@ GET      /PDF/PsiQueryReport/:monitor/:reportType/:start                        
 GET      /Excel/PsiQueryReport/:monitor/:reportType/:start                                     controllers.Report.psiReportReport(monitor, reportType, start, outputTypeStr="excel")
 GET      /PsiExplain                                                                           controllers.Report.psiExplain
 
+GET      /AqiReportPrompt                                                                      controllers.Report.aqiReportPrompt
+GET      /AqiReport/:monitor/:reportType/:start                                                controllers.Report.aqiReport(monitor, reportType, start, outputTypeStr="html")
+GET      /PDF/AqiReport/:monitor/:reportType/:start                                            controllers.Report.aqiReport(monitor, reportType, start, outputTypeStr="pdf")
+GET      /Excel/AqiReport/:monitor/:reportType/:start                                          controllers.Report.aqiReport(monitor, reportType, start, outputTypeStr="excel")
+GET      /AqiExplain                                                                           controllers.Report.aqiExplain
+
 GET      /EffectiveQuery                                                                       controllers.Report.effectiveQuery
 GET      /EffectiveAnnualReport/:reportType/:start/:param                                      controllers.Report.effectiveAnnualReport(reportType, start, param, outputTypeStr="html")
 GET      /PDF/EffectiveAnnualReport/:reportType/:start/:param                                  controllers.Report.effectiveAnnualReport(reportType, start, param, outputTypeStr="pdf")
@@ -72,6 +78,10 @@ GET      /Excel/HistoryTrend/:monitor/:epaMonitor/:monitorType/:reportUnit/:msf/
 GET      /PsiTrend                                                                             controllers.Query.psiTrend
 GET      /JSON/PsiTrend/:monitor/:start/:end/:dailyPsi                                         controllers.Query.psiTrendChart(monitor, start, end, dailyPsi:Boolean, outputType="html")
 GET      /Excel/PsiTrend/:monitor/:start/:end/:dailyPsi                                        controllers.Query.psiTrendChart(monitor, start, end, dailyPsi:Boolean, outputType="excel")
+
+GET      /AqiTrend                                                                             controllers.Query.aqiTrend
+GET      /JSON/AqiTrend/:monitor/:start/:end/:dailyAqi                                         controllers.Query.aqiTrendChart(monitor, start, end, dailyAqi:Boolean, outputType="html")
+GET      /Excel/AqiTrend/:monitor/:start/:end/:dailyAqi                                        controllers.Query.aqiTrendChart(monitor, start, end, dailyAqi:Boolean, outputType="excel")
 
 GET      /OverLawStd                                                                           controllers.Query.overLawStd
 GET      /OverLawStdReport/:monitor/:monitorType/:start/:end                                   controllers.Query.overLawStdReport(monitor, monitorType, start, end, outputTypeStr="html")

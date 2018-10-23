@@ -82,11 +82,16 @@ object Uploader {
   def getXml(path: String, hr: HourRecord) = {
     import scala.xml._
     val xmlList = hr.dataList.flatMap { mtRecord =>
-      val mt = MonitorType.withName(mtRecord.mtName)
-      if (itemIdMap.contains(mt))
-        Some(mtRecprdToXML(siteCounty, siteID, hr.date, mtRecord))
-      else
-        None
+      try {
+        val mt = MonitorType.withName(mtRecord.mtName)
+        if (itemIdMap.contains(mt))
+          Some(mtRecprdToXML(siteCounty, siteID, hr.date, mtRecord))
+        else
+          None
+      } catch {
+        case x: java.util.NoSuchElementException =>
+          None
+      }
     }
     val nowStr = DateTime.now().toString("YYYY-MM-dd_hh:mm:ss")
 

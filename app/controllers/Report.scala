@@ -657,6 +657,80 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
       }
   }
 
+    def aqiExplain = Security.Authenticated {
+    implicit request =>
+      val userInfo = Security.getUserinfo(request).get
+      val group = Group.getGroup(userInfo.groupID).get
+      Ok(views.html.aqiExplain())
+  }
+
+  def aqiReportPrompt() = Security.Authenticated {
+    implicit request =>
+      val userInfo = Security.getUserinfo(request).get
+      val group = Group.getGroup(userInfo.groupID).get
+      Ok(views.html.aqiReport(group.privilege))
+  }
+
+  def aqiReport(monitorStr: String, reportTypeStr: String, startDateStr: String, outputTypeStr: String) = Security.Authenticated {
+    implicit request =>
+      import models.Realtime._
+
+      val monitor = Monitor.withName(monitorStr)
+      val reportType = PeriodReport.withName(reportTypeStr)
+      val startDate = DateTime.parse(startDateStr)
+      val outputType = OutputType.withName(outputTypeStr)
+      if (outputType == OutputType.excel) {
+        val (title, excelFile) =
+          reportType match {
+            case PeriodReport.DailyReport =>
+              val aqiHourList =
+                for (h <- 0 to 23) yield AQI.getMonitorRealtimeAQI(monitor, startDate + h.hour)
+
+              ("AQI日報表", ExcelUtility.aqiDailyReport(monitor, startDate, aqiHourList))
+
+            case PeriodReport.MonthlyReport =>
+              val adjustStartDate = startDate.withDayOfMonth(1)
+              val aqiDailyList =
+                for (thisDay <- getDays(adjustStartDate, adjustStartDate + 1.month))
+                  yield AQI.getMonitorDailyAQI(monitor, thisDay)
+
+              val nDays = aqiDailyList.length
+              ("AQI月報表", ExcelUtility.aqiMonthlyReport(monitor, adjustStartDate, aqiDailyList, nDays))
+          }
+
+        Ok.sendFile(excelFile, fileName = _ =>
+          play.utils.UriEncoding.encodePathSegment(Monitor.map(monitor).name + title + startDate.toString("YYYYMMdd") + ".xlsx", "UTF-8"),
+          onClose = () => { Files.deleteIfExists(excelFile.toPath()) })
+
+      } else {
+        val (title, output) =
+          reportType match {
+            case PeriodReport.DailyReport =>
+              val aqiHourList =
+                for (h <- 0 to 23) yield AQI.getMonitorRealtimeAQI(monitor, startDate + h.hour)
+
+              ("AQI日報表", views.html.aqiDailyReport(monitor, startDate, aqiHourList))
+            case PeriodReport.MonthlyReport =>
+              val adjustStartDate = startDate.withDayOfMonth(1)
+              val aqiDailyList =
+                for (thisDay <- getDays(adjustStartDate, adjustStartDate + 1.month))
+                  yield AQI.getMonitorDailyAQI(monitor, thisDay)
+
+              val nDays = aqiDailyList.length
+              ("AQI月報表", views.html.aqiMonthlyReport(monitor, adjustStartDate, aqiDailyList, nDays))
+          }
+        outputType match {
+          case OutputType.html =>
+            Ok(output)
+          case OutputType.pdf =>
+            Ok.sendFile(creatPdfWithReportHeader(title, output),
+              fileName = _ =>
+                play.utils.UriEncoding.encodePathSegment(Monitor.map(monitor).name + title + startDate.toString("YYYYMMdd") + ".pdf", "UTF-8"))
+        }
+      }
+  }
+
+
   def effectiveQuery() = Security.Authenticated {
     implicit request =>
       val userInfo = Security.getUserinfo(request).get

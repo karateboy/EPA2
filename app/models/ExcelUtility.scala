@@ -640,6 +640,129 @@ object ExcelUtility {
     finishExcel(reportFilePath, pkg, wb)
   }
 
+    def aqiDailyReport(monitor: Monitor.Value, reportDate: DateTime,
+                     aqiHourRecords: Seq[(Option[Float], Map[AQI.Value, (Option[Float], Option[Float])])])(implicit messages: Messages) = {
+    val (reportFilePath, pkg, wb) = prepareTemplate("aqi_daily.xlsx")
+    val evaluator = wb.getCreationHelper().createFormulaEvaluator()
+
+    val sheet = wb.getSheetAt(0)
+    sheet.getRow(2).getCell(0).setCellValue("測站:" + Monitor.map(monitor).name)
+    sheet.getRow(1).getCell(15).setCellValue("查詢日期:" + DateTime.now.toString("YYYY/MM/dd"))
+    sheet.getRow(2).getCell(15).setCellValue("資料日期:" + reportDate.toString("YYYY/MM/dd"))
+
+    import org.apache.poi.ss.usermodel._
+
+    val greenStyle = sheet.getRow(31).getCell(0).getCellStyle
+    val yellowStyle = sheet.getRow(31).getCell(1).getCellStyle
+    val orangeStyle = sheet.getRow(31).getCell(2).getCellStyle
+    val redStyle = sheet.getRow(31).getCell(3).getCellStyle
+    val violetStyle = sheet.getRow(31).getCell(4).getCellStyle
+    val brownStyle = sheet.getRow(31).getCell(5).getCellStyle
+
+    for {
+      row <- 5 to 5 + 24 - 1
+      data = aqiHourRecords(row - 5)
+    } {
+      if (data._1.isDefined) {
+        val cell = sheet.getRow(row).getCell(1)
+        val v = data._1.get
+        cell.setCellValue(v)
+        if (v < 50)
+          cell.setCellStyle(greenStyle)
+        else if (v <= 100)
+          cell.setCellStyle(yellowStyle)
+        else if (v < 150)
+          cell.setCellStyle(orangeStyle)
+        else if (v < 200)
+          cell.setCellStyle(redStyle)
+        else if (v < 300)
+          cell.setCellStyle(violetStyle)
+        else
+          cell.setCellStyle(brownStyle)
+      } else
+        sheet.getRow(row).getCell(1).setCellValue("-")
+
+      for {
+        aqi_type_idx <- AQI.realtimeList.zipWithIndex
+        idx = aqi_type_idx._2
+        aqi = data._2(aqi_type_idx._1)
+      } {
+        if (aqi._1.isDefined)
+          sheet.getRow(row).getCell(2 + idx * 2 + 1).setCellValue(aqi._1.get)
+        else
+          sheet.getRow(row).getCell(2 + idx * 2 + 1).setCellValue("-")
+
+        if (aqi._2.isDefined)
+          sheet.getRow(row).getCell(2 + idx * 2).setCellValue(aqi._2.get)
+        else
+          sheet.getRow(row).getCell(2 + idx * 2).setCellValue("-")
+      }
+    }
+
+    finishExcel(reportFilePath, pkg, wb)
+  }
+
+  def aqiMonthlyReport(monitor: Monitor.Value, reportDate: DateTime, aqiDailyList: List[AqiReport], nDays: Int)(implicit messages: Messages) = {
+    val (reportFilePath, pkg, wb) = prepareTemplate("aqi_monthly.xlsx")
+    val evaluator = wb.getCreationHelper().createFormulaEvaluator()
+
+    val sheet = wb.getSheetAt(0)
+    sheet.getRow(2).getCell(0).setCellValue("測站:" + Monitor.map(monitor).name)
+    sheet.getRow(1).getCell(13).setCellValue("查詢日期:" + DateTime.now.toString("YYYY/MM/dd"))
+    sheet.getRow(2).getCell(13).setCellValue("資料日期:" + reportDate.toString("YYYY年MM月"))
+
+    val greenStyle = sheet.getRow(37).getCell(0).getCellStyle
+    val yellowStyle = sheet.getRow(37).getCell(1).getCellStyle
+    val orangeStyle = sheet.getRow(37).getCell(2).getCellStyle
+    val redStyle = sheet.getRow(37).getCell(3).getCellStyle
+    val violetStyle = sheet.getRow(37).getCell(4).getCellStyle
+    val brownStyle = sheet.getRow(37).getCell(5).getCellStyle
+
+    for {
+      row <- 5 to 5 + nDays - 1
+      data = aqiDailyList(row - 5)
+    } {
+      if (data.aqi.isDefined) {
+        val cell = sheet.getRow(row).getCell(1)
+        val v = data.aqi.get
+        cell.setCellValue(v)
+        if (v < 50)
+          cell.setCellStyle(greenStyle)
+        else if (v <= 100)
+          cell.setCellStyle(yellowStyle)
+        else if (v < 150)
+          cell.setCellStyle(orangeStyle)
+        else if (v < 200)
+          cell.setCellStyle(redStyle)
+        else if (v < 300)
+          cell.setCellStyle(violetStyle)
+        else
+          cell.setCellStyle(brownStyle)
+
+      } else
+        sheet.getRow(row).getCell(1).setCellValue("-")
+
+      for {
+        aqi_type_idx <- AQI.dailyList.zipWithIndex
+        idx = aqi_type_idx._2
+        aqi = data.sub_map(aqi_type_idx._1)
+      } {
+        if (aqi._1.isDefined)
+          sheet.getRow(row).getCell(2 + idx * 2 + 1).setCellValue(aqi._1.get)
+        else
+          sheet.getRow(row).getCell(2 + idx * 2 + 1).setCellValue("-")
+
+        if (aqi._2.isDefined)
+          sheet.getRow(row).getCell(2 + idx * 2).setCellValue(aqi._2.get)
+        else
+          sheet.getRow(row).getCell(2 + idx * 2).setCellValue("-")
+      }
+    }
+
+    finishExcel(reportFilePath, pkg, wb)
+  }
+
+
   def psiDailyReport(monitor: Monitor.Value, reportDate: DateTime, psiHourRecords: List[(Option[Float], Map[MonitorType.Value, (Option[Float], Option[Float])])])(implicit messages: Messages) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("psi_daily.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
@@ -1139,14 +1262,18 @@ object ExcelUtility {
 
     finishExcel(reportFilePath, pkg, wb)
   }
+  
+  val exportStatus = false
 
-  def exportChartData(chart: HighchartData, monitorTypes: Array[MonitorType.Value]): File = {
+  def exportChartData(chart: HighchartData, monitorTypes: Array[MonitorType.Value],
+                      templateFileName: String = "chart_export.xlsx"): File = {
     val precArray = monitorTypes.map { mt => MonitorType.map(mt).prec }
-    exportChartData(chart, precArray)
+    exportChartData(chart, precArray, templateFileName)
   }
 
-  def exportChartData(chart: HighchartData, precArray: Array[Int]) = {
-    val (reportFilePath, pkg, wb) = prepareTemplate("chart_export.xlsx")
+  def exportChartData(chart: HighchartData, precArray: Array[Int],
+                      templateFileName: String) = {
+    val (reportFilePath, pkg, wb) = prepareTemplate(templateFileName)
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val format = wb.createDataFormat();
 
@@ -1161,7 +1288,7 @@ object ExcelUtility {
     } {
       headerRow.createCell(pos + 1).setCellValue(series.name)
       pos += 1
-      if (series.status.isDefined) {
+      if (series.status.isDefined && exportStatus) {
         headerRow.createCell(pos + 1).setCellValue("狀態碼")
         pos += 1
       }
@@ -1187,7 +1314,8 @@ object ExcelUtility {
           series = chart.series(col - 1)
         } {
           val cell = thisRow.createCell(col)
-          cell.setCellStyle(styles(col - 1))
+          if (styles.length != 0)
+            cell.setCellStyle(styles((col - 1) % styles.length))
 
           val pair = series.data(rowNo - 1)
           if (pair.length == 2 && pair(1).isDefined) {
@@ -1212,7 +1340,8 @@ object ExcelUtility {
         } {
           val cell = thisRow.createCell(pos + 1)
           pos += 1
-          cell.setCellStyle(styles(col - 1))
+          if (styles.length != 0)
+            cell.setCellStyle(styles((col - 1) % styles.length))
 
           val pair = series.data(row - 1)
           if (col == 1) {
@@ -1223,7 +1352,7 @@ object ExcelUtility {
             cell.setCellValue(pair(1).get)
           }
 
-          if (series.status.isDefined) {
+          if (series.status.isDefined && exportStatus) {
             val statusCell = thisRow.createCell(pos + 1)
             pos += 1
             val statusOpt = series.status.get(row - 1)
@@ -1234,7 +1363,6 @@ object ExcelUtility {
         }
       }
     }
-
     finishExcel(reportFilePath, pkg, wb)
   }
 

@@ -30,7 +30,7 @@ case class PeriodStat(avg: Float, min: Float, max: Float, sd: Float, minDate: Da
 
 object Query {
   val epa_compare = Play.current.configuration.getBoolean("epa_compare").getOrElse(true)
-  
+
   def trendHelper(monitors: Array[Monitor.Value], epaMonitors: Array[EpaMonitor.Value],
                   monitorTypes: Array[MonitorType.Value], reportUnit: ReportUnit.Value, monitorStatusFilter: MonitorStatusFilter.Value,
                   start: DateTime, end: DateTime)(implicit messages: Messages, request: RequestHeader) = {
@@ -50,7 +50,8 @@ object Query {
         if (reportUnit == ReportUnit.Min)
           timeSet ++= getPeriods(start, end, 1.minute)
         else
-          timeSet ++= getPeriods(DateTime.parse(start.toString("YYYY-MM-dd HH"), DateTimeFormat.forPattern("YYYY-MM-dd HH")),
+          timeSet ++= getPeriods(
+            DateTime.parse(start.toString("YYYY-MM-dd HH"), DateTimeFormat.forPattern("YYYY-MM-dd HH")),
             DateTime.parse(end.toString("YYYY-MM-dd HH"), DateTimeFormat.forPattern("YYYY-MM-dd HH")), 1.hour)
 
         val ps =
@@ -105,12 +106,14 @@ object Query {
           case ReportUnit.Day =>
             timeSet ++= Report.getDays(DateTime.parse(start.toString("YYYY-MM-dd")), DateTime.parse(end.toString("YYYY-MM-dd")))
           case ReportUnit.Week =>
-            timeSet ++= Report.getWeeks(DateTime.parse(adjustWeekDay(start).toString("YYYY-MM-dd")),
+            timeSet ++= Report.getWeeks(
+              DateTime.parse(adjustWeekDay(start).toString("YYYY-MM-dd")),
               DateTime.parse(adjustWeekDay(end).toString("YYYY-MM-dd")) + 1.weeks)
           case ReportUnit.Month =>
             timeSet ++= Report.getMonths(DateTime.parse(start.toString("YYYY-MM-01")), DateTime.parse(end.toString("YYYY-MM-01")) + 1.months)
           case ReportUnit.Quarter =>
-            timeSet ++= Report.getQuarters(DateTime.parse(s"${start.getYear}-${1 + (start.getMonthOfYear - 1) / 3 * 3}-01"),
+            timeSet ++= Report.getQuarters(
+              DateTime.parse(s"${start.getYear}-${1 + (start.getMonthOfYear - 1) / 3 * 3}-01"),
               DateTime.parse(s"${end.getYear}-${1 + (end.getMonthOfYear - 1) / 3 * 3}-01") + 3.month)
 
         }
@@ -329,13 +332,16 @@ object Query {
             if (monitorTypes.length == 2) {
               val mt = monitorTypes.filter { !MonitorType.windDirList.contains(_) }(0)
               val mtCase = MonitorType.map(monitorTypes.filter { !MonitorType.windDirList.contains(_) }(0))
-              Seq(YAxis(None,
+              Seq(
+                YAxis(
+                None,
                 AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))),
                 getAxisLines(mt),
                 gridLineWidth = Some(0)),
                 windYaxis)
             } else {
-              Seq(YAxis(None, AxisTitle(Some(None)), None, gridLineWidth = Some(0)),
+              Seq(
+                YAxis(None, AxisTitle(Some(None)), None, gridLineWidth = Some(0)),
                 windYaxis)
             }
           } else {
@@ -415,7 +421,8 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
         case OutputType.html =>
           Ok(output)
         case OutputType.pdf =>
-          Ok.sendFile(creatPdfWithReportHeader(title, output),
+          Ok.sendFile(
+            creatPdfWithReportHeader(title, output),
             fileName = _ =>
               play.utils.UriEncoding.encodePathSegment(title + start.toString("YYMMdd") + "_" + end.toString("MMdd") + ".pdf", "UTF-8"))
       }
@@ -476,7 +483,8 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
         case OutputType.html =>
           Ok(output)
         case OutputType.pdf =>
-          Ok.sendFile(creatPdfWithReportHeader(title, output),
+          Ok.sendFile(
+            creatPdfWithReportHeader(title, output),
             fileName = _ =>
               play.utils.UriEncoding.encodePathSegment(title + start.toString("YYMMdd") + "_" + end.toString("MMdd") + ".pdf", "UTF-8"))
       }
@@ -506,13 +514,16 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
       val monitorStatusFilter = MonitorStatusFilter.withName(msfStr)
       val (start, end) =
         if (reportUnit == ReportUnit.Min || reportUnit == ReportUnit.TenMin || reportUnit == ReportUnit.Hour) {
-          (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")),
+          (
+            DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")),
             DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")))
         } else if (reportUnit == ReportUnit.Month || reportUnit == ReportUnit.Quarter) {
-          (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-M")),
+          (
+            DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-M")),
             DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-M")))
         } else {
-          (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
+          (
+            DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
             DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
         }
       val outputType = OutputType.withName(outputTypeStr)
@@ -624,15 +635,13 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
         getPeriods(start, end, 1.hour)
 
       val monitorPsiPair =
-      for (m <- monitors) yield
-        m -> getPsiMap(m)
-      
-      val monitorPsiMap = monitorPsiPair.toMap 
+        for (m <- monitors) yield m -> getPsiMap(m)
 
-      val epaPsiPair = 
-      for (m <- epaMonitors) yield
-        m -> getEpaPsiMap(m)
-      
+      val monitorPsiMap = monitorPsiPair.toMap
+
+      val epaPsiPair =
+        for (m <- epaMonitors) yield m -> getEpaPsiMap(m)
+
       val epaPsiMap = epaPsiPair.toMap
 
       val title = "PSI歷史趨勢圖"
@@ -681,7 +690,158 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
         series ++ epaSeries)
 
       if (outputType == OutputType.excel) {
-        val excelFile = ExcelUtility.exportChartData(chart, Array(0, monitors.length + 1))
+        val excelFile = ExcelUtility.exportChartData(chart, Array(0, monitors.length + 1), "psiTrend.xlsx")
+        Results.Ok.sendFile(excelFile, fileName = _ =>
+          play.utils.UriEncoding.encodePathSegment(chart.title("text") + ".xlsx", "UTF-8"),
+          onClose = () => { Files.deleteIfExists(excelFile.toPath()) })
+      } else {
+        Results.Ok(Json.toJson(chart))
+      }
+
+  }
+
+  def aqiTrend = Security.Authenticated {
+    implicit request =>
+      val userInfo = Security.getUserinfo(request).get
+      val group = Group.getGroup(userInfo.groupID).get
+      Ok(views.html.aqiTrend(group.privilege))
+  }
+
+  def aqiTrendChart(monitorStr: String, startStr: String, endStr: String, isDailyAqi: Boolean, outputTypeStr: String) = Security.Authenticated {
+    implicit request =>
+      import scala.collection.JavaConverters._
+      val monitorStrArray = monitorStr.split(':')
+      val monitors = monitorStrArray.flatMap { name =>
+        try {
+          Some(Monitor.withName(name))
+        } catch {
+          case _: Throwable =>
+            None
+        }
+      }
+
+      val epaMonitors = monitorStrArray.flatMap { name =>
+        try {
+          Some(EpaMonitor.withName(name))
+        } catch {
+          case _: Throwable =>
+            None
+        }
+      }
+
+      val start = DateTime.parse(startStr)
+      val end = DateTime.parse(endStr) + 1.day
+      val outputType = OutputType.withName(outputTypeStr)
+
+      def getAqiMap(m: Monitor.Value) = {
+        import models.Realtime._
+        var current = start
+
+        if (isDailyAqi) {
+          import scala.collection.mutable.Map
+          val map = Map.empty[DateTime, Float]
+          while (current < end) {
+            val v = AQI.getMonitorDailyAQI(m, current)
+            if (v.aqi.isDefined) {
+              val aqi = v.aqi.get
+              map += (current -> aqi)
+            }
+            current += 1.day
+          }
+          map
+        } else {
+          AQI.getRealtimeAqiTrend(m, start, end)
+        }
+      }
+
+      def getEpaAqiMap(m: EpaMonitor.Value) = {
+        import models.Realtime._
+        var current = start
+        import scala.collection.mutable.Map
+
+        val map = Map.empty[DateTime, Float]
+        while (current < end) {
+          if (isDailyAqi) {
+            val v = AQI.getEpaDailyAQI(m, current)
+            if (v.aqi.isDefined) {
+              val aqi = v.aqi.get
+              map += (current -> aqi)
+            }
+            current += 1.day
+          } else {
+            val v = AQI.getEpaRealtimeAQI(m, current)
+            if (v._1.isDefined) {
+              val psi = v._1.get
+              map += (current -> psi)
+            }
+            current += 1.hour
+          }
+        }
+        map
+      }
+
+      val timeSet = if (isDailyAqi)
+        getPeriods(start, end, 1.day)
+      else
+        getPeriods(start, end, 1.hour)
+
+      val monitorPsiPair =
+        for (m <- monitors) yield m -> getAqiMap(m)
+
+      val monitorPsiMap = monitorPsiPair.toMap
+
+      val epaPsiPair =
+        for (m <- epaMonitors) yield m -> getEpaAqiMap(m)
+
+      val epaPsiMap = epaPsiPair.toMap
+
+      val title = "AQI歷史趨勢圖"
+      val timeSeq = timeSet.zipWithIndex
+      import Realtime._
+
+      val series = for {
+        m <- monitors
+        timeData = timeSeq.map { t =>
+          val time = t._1
+          val x = t._2
+          if (monitorPsiMap(m).contains(time))
+            Seq(Some(time.getMillis.toDouble), Some(monitorPsiMap(m)(time).toDouble))
+          else
+            Seq(Some(time.getMillis.toDouble), None)
+        }
+      } yield {
+        seqData(Monitor.map(m).name, timeData)
+      }
+
+      val epaSeries = for {
+        m <- epaMonitors
+        timeData = timeSeq.map { t =>
+          val time = t._1
+          val x = t._2
+          if (epaPsiMap(m).contains(time))
+            Seq(Some(time.getMillis.toDouble), Some(epaPsiMap(m)(time).toDouble))
+          else
+            Seq(Some(time.getMillis.toDouble), None)
+        }
+      } yield {
+        seqData(EpaMonitor.map(m).name, timeData)
+      }
+
+      val timeStrSeq =
+        if (isDailyAqi)
+          timeSeq.map(_._1.toString("YY/MM/dd"))
+        else
+          timeSeq.map(_._1.toString("MM/dd HH:00"))
+
+      val chart = HighchartData(
+        scala.collection.immutable.Map("type" -> "column"),
+        scala.collection.immutable.Map("text" -> title),
+        XAxis(None),
+        Seq(YAxis(None, AxisTitle(Some(Some(""))), None)),
+        series ++ epaSeries)
+
+      if (outputType == OutputType.excel) {
+        val excelFile = ExcelUtility.exportChartData(chart, Array(0, monitors.length + 1), "aqiTrend.xlsx")
         Results.Ok.sendFile(excelFile, fileName = _ =>
           play.utils.UriEncoding.encodePathSegment(chart.title("text") + ".xlsx", "UTF-8"),
           onClose = () => { Files.deleteIfExists(excelFile.toPath()) })
@@ -738,7 +898,8 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
         case OutputType.html =>
           Ok(output)
         case OutputType.pdf =>
-          Ok.sendFile(creatPdfWithReportHeader(title, output),
+          Ok.sendFile(
+            creatPdfWithReportHeader(title, output),
             fileName = _ =>
               play.utils.UriEncoding.encodePathSegment(title + start.toString("YYMMdd") + "_" + end.toString("MMdd") + ".pdf", "UTF-8"))
       }
@@ -769,7 +930,8 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
         case OutputType.html =>
           Ok(output)
         case OutputType.pdf =>
-          Ok.sendFile(creatPdfWithReportHeader(title, output),
+          Ok.sendFile(
+            creatPdfWithReportHeader(title, output),
             fileName = _ =>
               play.utils.UriEncoding.encodePathSegment(title + start.toString("YYMMdd") + "_" + end.toString("MMdd") + ".pdf", "UTF-8"))
       }
@@ -797,7 +959,8 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
       case OutputType.html =>
         Ok(output)
       case OutputType.pdf =>
-        Ok.sendFile(creatPdfWithReportHeader(title, output),
+        Ok.sendFile(
+          creatPdfWithReportHeader(title, output),
           fileName = _ =>
             play.utils.UriEncoding.encodePathSegment(title + start.toString("YYMMdd") + "_" + end.toString("MMdd") + ".pdf", "UTF-8"))
     }
@@ -935,7 +1098,8 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
 
         val series =
           for (yData <- compareList.zipWithIndex)
-            yield seqData((start.getYear - yData._2).toString,
+            yield seqData(
+            (start.getYear - yData._2).toString,
             yData._1.map(i => Seq(Some((new DateTime(i._1) + yData._2.year).getMillis.toDouble), i._2._1.map { _.toDouble })))
 
         val c = HighchartData(
@@ -1002,7 +1166,8 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
         case OutputType.html =>
           Ok(output)
         case OutputType.pdf =>
-          Ok.sendFile(creatPdfWithReportHeader(title, output),
+          Ok.sendFile(
+            creatPdfWithReportHeader(title, output),
             fileName = _ =>
               play.utils.UriEncoding.encodePathSegment(title + start.toString("YYMMdd") + "_" + end.toString("MMdd") + ".pdf", "UTF-8"))
       }
@@ -1018,11 +1183,12 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
   import Realtime._
 
   case class seqData2(name: String, data: Seq[Seq[Option[Double]]])
-  case class RegressionChartData(chart: Map[String, String],
-                                 title: Map[String, String],
-                                 xAxis: XAxis,
-                                 yAxis: YAxis,
-                                 series: Seq[seqData2])
+  case class RegressionChartData(
+    chart:  Map[String, String],
+    title:  Map[String, String],
+    xAxis:  XAxis,
+    yAxis:  YAxis,
+    series: Seq[seqData2])
 
   implicit val seqDataWrite = Json.writes[seqData2]
   implicit val rcWrite = Json.writes[RegressionChartData]
@@ -1045,7 +1211,8 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
       val series = Seq(seqData2(start.getYear.toString(), data))
 
       val c = RegressionChartData(
-        Map(("type" -> "scatter"),
+        Map(
+          ("type" -> "scatter"),
           ("zoomType" -> "xy")),
         Map("text" -> title),
         XAxis(None),
@@ -1076,7 +1243,8 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
         case OutputType.html =>
           Ok(output)
         case OutputType.pdf =>
-          Ok.sendFile(creatPdfWithReportHeader(title, output),
+          Ok.sendFile(
+            creatPdfWithReportHeader(title, output),
             fileName = _ =>
               play.utils.UriEncoding.encodePathSegment(Monitor.map(monitor).name + title + start.toString("YYYYMMdd") + "_" +
                 end.toString("MMdd") + ".pdf", "UTF-8"))

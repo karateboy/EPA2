@@ -94,3 +94,80 @@
     -moz-box-shadow: 2px 2px 5px #CCCCCC;
     -webkit-box-shadow: 2px 2px 5px #CCCCCC;
 }
+
+.AQI1 {
+	color: #000;
+	background-color: #00e800
+}
+
+.AQI1 A, .AQI1 a:hover {
+	color: #000
+}
+
+.AQI2 {
+	color: #000;
+	background-color: #ff0
+}
+
+.AQI2 A, .AQI2 A:hover {
+	color: #000
+}
+
+.AQI3 {
+	color: #000;
+	background-color: #ff7e00
+}
+
+.AQI3 A, .AQI3 A:hover {
+	color: #000
+}
+
+.AQI4 {
+	background-color: red
+}
+
+.AQI4 A, .AQI4 A:hover {
+	color: #fff
+}
+
+.AQI5 {
+	color: #fff;
+	background-color: #8f3f97
+}
+
+.AQI5 A, .AQI5 A:hover {
+	color: #fff
+}
+
+.AQI6 {
+	color: #fff;
+	background-color: #7e0023
+}
+
+.AQI6 A, .AQI6 A:hover {
+	color: #fff
+}
+
+.AQI1_BG {
+	border: outset 1px #a0a0a0
+}
+
+.AQI2_BG {
+	border: outset 1px #a0a0a0
+}
+
+.AQI3_BG {
+	border: outset 1px #a0a0a0
+}
+
+.AQI4_BG {
+	border: outset 1px #a0a0a0
+}
+
+.AQI5_BG {
+	border: outset 1px #a0a0a0
+}
+
+.AQI6_BG {
+	border: outset 1px #a0a0a0
+}
