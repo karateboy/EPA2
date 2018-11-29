@@ -43,7 +43,7 @@ object AQI extends Enumeration {
     SO2_24hr -> MonitorType.SO2,
     NO2 -> MonitorType.NO2)
 
-  val realtimeList = List(O3_8hr, O3, pm25, pm10, CO_8hr, SO2, SO2_24hr, NO2)
+  val realtimeList = List(O3_8hr, O3, pm25, pm10, CO_8hr, SO2, NO2)
   val dailyList = List(O3_8hr, O3, pm25, pm10, CO_8hr, SO2, NO2)
 
   def o3_8AQI(ov: Option[Float]) = {
@@ -263,8 +263,10 @@ object AQI extends Enumeration {
     val pm25 = for (v1 <- pm25_12; v2 <- pm25_4) yield (v1 + v2) / 2
 
     val co_8 = getMonitorTypeAvg(monitor, MonitorType.CO, thisHour - 7.hour, thisHour + 1.hour, 6)
+    Logger.debug("SO2 realtime")
     val so2 = getMonitorTypeAvg(monitor, MonitorType.SO2, thisHour, thisHour + 1.hour, 1)
-    val so2_24 = getMonitorTypeAvg(monitor, MonitorType.SO2, thisHour - 23, thisHour + 1.hour, 1)
+    Logger.debug("SO2 24 hour avg")
+    val so2_24 = getMonitorTypeAvg(monitor, MonitorType.SO2, thisHour - 23.hour, thisHour + 1.hour, 1)
     val no2 = getMonitorTypeAvg(monitor, MonitorType.NO2, thisHour, thisHour + 1.hour, 1)
 
     val result = Map[AQI.Value, (Option[Float], Option[Float])](
@@ -573,8 +575,6 @@ object Realtime {
                         start: DateTime, end: DateTime, validMin: Int)(implicit session: DBSession = AutoSession) = {
     val records = getHourRecords(monitor, start, end)
     val typeValues = records.map { hr => monitorTypeProject2(monitorType)(hr) }
-    val duration = new Duration(start, end)
-    val nHour = duration.getStandardHours
     val validValues = typeValues.filter(statusFilter(MonitorStatusFilter.ValidData)).map(_._1.get)
     val total = validValues.length
     if (total < validMin)
