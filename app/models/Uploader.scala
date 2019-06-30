@@ -42,11 +42,11 @@ object Uploader {
     PM25 -> ItemIdMap(27, "細懸浮微粒", "PM2.5", "ug/m3"),
     WD_SPEED -> ItemIdMap(10, "風速", "WS", "m/2"),
     WD_DIR -> ItemIdMap(11, "風向", "WD", "Deg"),
-    TEMP -> ItemIdMap(14, "溫度", "TEM", "Deg"),
+    TEMP -> ItemIdMap(14, "大氣溫度", "AMB_TEMP", "Deg"),
     HUMID -> ItemIdMap(31, "溼度", "HUM", "%"),
     PRESS -> ItemIdMap(17, "大氣壓力", "Press", "atm"),
     RAIN -> ItemIdMap(23, "雨量", "RF", "mm"),
-    RT -> ItemIdMap(14, "室內溫度", "TEM", "deg"))
+    RT -> ItemIdMap(16, "室內溫度", "SHELT_TEMP", "deg"))
 
   def mtRecprdToXML(siteCounty: String, siteID: String, dateTime: DateTime, mtRecord: MtRecord) = {
     val map = itemIdMap(MonitorType.withName(mtRecord.mtName))
@@ -68,12 +68,14 @@ object Uploader {
         <aqs:SampleCollectionStartDate>{ dateStr }</aqs:SampleCollectionStartDate>
         <aqs:SampleCollectionStartTime>{ timeStr }</aqs:SampleCollectionStartTime>
         {
-          if (MonitorStatus.isValid(mtRecord.status))
-            <aqs:ReportedSampleValue>{ mtRecord.value }</aqs:ReportedSampleValue>
-          else if (MonitorStatus.isCalbrating(mtRecord.status))
-            <aqs:ReportedSampleValue>D50</aqs:ReportedSampleValue>
-          else
-            <aqs:ReportedSampleValue>D51</aqs:ReportedSampleValue>
+
+          <aqs:ReportedSampleValue>{ mtRecord.value }</aqs:ReportedSampleValue>
+          if (!MonitorStatus.isValid(mtRecord.status)) {
+            if (MonitorStatus.isCalbrating(mtRecord.status))
+              <aqs:QualitfierCode01>D50</aqs:QualitfierCode01>
+            else
+              <aqs:QualitfierCode01>D51</aqs:QualitfierCode01>
+          }
         }
       </aqs:SubDailyRawData>
     </aqs:AirQualityData>
