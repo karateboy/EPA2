@@ -68,14 +68,16 @@ object Uploader {
         <aqs:SampleCollectionStartDate>{ dateStr }</aqs:SampleCollectionStartDate>
         <aqs:SampleCollectionStartTime>{ timeStr }</aqs:SampleCollectionStartTime>
         {
-
-          <aqs:ReportedSampleValue>{ mtRecord.value }</aqs:ReportedSampleValue>
-          if (!MonitorStatus.isValid(mtRecord.status)) {
-            if (MonitorStatus.isCalbrating(mtRecord.status))
-              <aqs:QualitfierCode01>D50</aqs:QualitfierCode01>
-            else
-              <aqs:QualitfierCode01>D51</aqs:QualitfierCode01>
-          }
+          val valueElem = <aqs:ReportedSampleValue>{ mtRecord.value }</aqs:ReportedSampleValue>
+          if(MonitorStatus.isValid(mtRecord.status)){
+            valueElem  
+          }else{
+            if (MonitorStatus.isCalbrating(mtRecord.status)){
+              valueElem ++ <aqs:QualifierCode01>D50</aqs:QualifierCode01>
+            }else{
+              valueElem ++ <aqs:QualifierCode01>D51</aqs:QualifierCode01>
+            }
+          }          
         }
       </aqs:SubDailyRawData>
     </aqs:AirQualityData>
