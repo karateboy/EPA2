@@ -1151,12 +1151,14 @@ object ExcelUtility {
           fillCellF(sheet.getRow(row).getCell(5), MonitorType.map(item.monitorType).zd_law)
           fillCellF(sheet.getRow(row).getCell(6), item.s_std)
           fillCellF(sheet.getRow(row).getCell(7), item.s_sval)
-          if (item.sd_pnt.isDefined) {
+          if (item.sd_pnt.isDefined && 
+              MonitorType.map(item.monitorType).sd_law.isDefined && 
+              MonitorType.map(item.monitorType).sd_internal.isDefined) {
             val sd_pnt = item.sd_pnt.get
             if (sd_pnt > MonitorType.map(item.monitorType).sd_law.get) {
               sheet.getRow(row).getCell(8).setCellStyle(lawStyle)
             } else if (sd_pnt > MonitorType.map(item.monitorType).sd_internal.get) {
-              sheet.getRow(row).getCell(8).setCellStyle(lawStyle)
+              sheet.getRow(row).getCell(8).setCellStyle(internalStyle)
             }
           }
           fillCellF(sheet.getRow(row).getCell(8), item.sd_pnt)
