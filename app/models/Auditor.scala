@@ -17,14 +17,14 @@ class AuditStat(hr: HourRecord) {
   val date = hr.date
   var chk = hr.chk
   var map = hr.valueMap
-  
+
   def getStat(mt: MonitorType.Value) = {
     map(mt)._2
   }
 
-  def setStat(mt: MonitorType.Value, stat: String){
+  def setStat(mt: MonitorType.Value, stat: String) {
     val v_s = map(mt)
-    val pair = mt->(v_s._1, Some(stat):Option[String])
+    val pair = mt -> (v_s._1, Some(stat): Option[String])
     map = map + pair
   }
 
@@ -76,6 +76,14 @@ class AuditStat(hr: HourRecord) {
         Where DP_NO=${name} and M_DateTime = ${date}        
       """.update.apply
   }
+
+  def toHourRecord() = {
+    val dataList = map.toList map {
+      x =>
+        MtRecord(x._1.toString(), x._2._1.get, x._2._2.get)
+    }
+    HourRecord(hr.monitor, hr.date, chk, dataList)
+  }
 }
 
 object Auditor {
@@ -88,56 +96,55 @@ object Auditor {
     r._1.isDefined && r._2.isDefined &&
       (MonitorStatus.isNormalStat(r._2.get) || MonitorStatus.getTagInfo(r._2.get).statusType == StatusType.Auto)
   }
-      
-  def auditHourData(monitor: Monitor.Value, auditConfig: AutoAudit, start: DateTime, end: DateTime, reaudit:Boolean = false)(implicit session: DBSession = AutoSession) = {
+
+  def auditHourData(monitor: Monitor.Value, auditConfig: AutoAudit, start: DateTime, end: DateTime, reaudit: Boolean = false)(implicit session: DBSession = AutoSession) = {
     val records =
-      if(reaudit)
+      if (reaudit)
         getHourRecords(monitor, start, end).toArray
       else
         getUncheckedHourRecords(monitor, start, end).toArray
-      
 
     for {
       hr <- records.zipWithIndex
       record = hr._1
       idx = hr._2
       targetStat = {
-        if(reaudit){
+        if (reaudit) {
           val as = new AuditStat(record)
           as.clear()
           as
-        }else
-          new AuditStat(record)}
+        } else
+          new AuditStat(record)
+      }
     } {
       var invalid = false
-      if(auditConfig.minMaxRule.checkInvalid(record, targetStat))
+      if (auditConfig.minMaxRule.checkInvalid(record, targetStat))
         invalid = true
 
-      if(auditConfig.compareRule.checkInvalid(record, targetStat))
+      if (auditConfig.compareRule.checkInvalid(record, targetStat))
         invalid = true
 
-      if(auditConfig.differenceRule.checkInvalid(record, targetStat, monitor, record.date))
+      if (auditConfig.differenceRule.checkInvalid(record, targetStat, monitor, record.date))
         invalid = true
 
-      if(auditConfig.persistenceRule.checkInvalid(record, targetStat, monitor, record.date))
-        invalid = true
-      
-
-      if(auditConfig.spikeRule.checkInvalid(record, targetStat, monitor, record.date))
+      if (auditConfig.persistenceRule.checkInvalid(record, targetStat, monitor, record.date))
         invalid = true
 
-      if(auditConfig.twoHourRule.checkInvalid(record, targetStat, monitor, record.date))
+      if (auditConfig.spikeRule.checkInvalid(record, targetStat, monitor, record.date))
         invalid = true
-        
-      if(auditConfig.threeHourRule.checkInvalid(record, targetStat, monitor, record.date))
+
+      if (auditConfig.twoHourRule.checkInvalid(record, targetStat, monitor, record.date))
         invalid = true
-        
-      if(auditConfig.fourHourRule.checkInvalid(record, targetStat, monitor, record.date))
+
+      if (auditConfig.threeHourRule.checkInvalid(record, targetStat, monitor, record.date))
         invalid = true
-        
-      if(auditConfig.monoRule.checkInvalid(record, targetStat, monitor, record.date))
+
+      if (auditConfig.fourHourRule.checkInvalid(record, targetStat, monitor, record.date))
         invalid = true
-        
+
+      if (auditConfig.monoRule.checkInvalid(record, targetStat, monitor, record.date))
+        invalid = true
+
       //Save
       if (invalid)
         targetStat.chk = Some("BAD")
@@ -148,4 +155,43 @@ object Auditor {
     }
   }
 
+  def auditHourRecord(monitor: Monitor.Value, auditConfig: AutoAudit, record: HourRecord) = {
+    val targetStat = new AuditStat(record)
+
+    var invalid = false
+    if (auditConfig.minMaxRule.checkInvalid(record, targetStat))
+      invalid = true
+
+    if (auditConfig.compareRule.checkInvalid(record, targetStat))
+      invalid = true
+
+    if (auditConfig.differenceRule.checkInvalid(record, targetStat, monitor, record.date))
+      invalid = true
+
+    if (auditConfig.persistenceRule.checkInvalid(record, targetStat, monitor, record.date))
+      invalid = true
+
+    if (auditConfig.spikeRule.checkInvalid(record, targetStat, monitor, record.date))
+      invalid = true
+
+    if (auditConfig.twoHourRule.checkInvalid(record, targetStat, monitor, record.date))
+      invalid = true
+
+    if (auditConfig.threeHourRule.checkInvalid(record, targetStat, monitor, record.date))
+      invalid = true
+
+    if (auditConfig.fourHourRule.checkInvalid(record, targetStat, monitor, record.date))
+      invalid = true
+
+    if (auditConfig.monoRule.checkInvalid(record, targetStat, monitor, record.date))
+      invalid = true
+
+    //Save
+    if (invalid)
+      targetStat.chk = Some("BAD")
+    else
+      targetStat.chk = Some("OK")
+
+    targetStat.toHourRecord()
+  }
 }

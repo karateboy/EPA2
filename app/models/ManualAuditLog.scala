@@ -6,7 +6,7 @@ import play.api._
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 
-case class ManualAuditLog(tabType:TableType.Value, monitor:Monitor.Value, dataTime:DateTime, monitorType:MonitorType.Value, 
+case class ManualAuditLog(tabType:TableType.Value, monitor:Monitor.Value, dataTime:DateTime, monitorType:String, 
     modified_time:DateTime, changed_status:String, operator:String, reason:Option[String])
 object ManualAuditLog {
   val mapping = List(
@@ -17,18 +17,18 @@ object ManualAuditLog {
   val tabIdxMap = Map(mapping:_*)
   val tabTypeToIdMap = Map(mapping.map(t=>t.swap):_*)
   
-  def getLog(tabType:TableType.Value, monitor:Monitor.Value, dataTime:Timestamp, monitorType:MonitorType.Value)={
+  def getLog(tabType:TableType.Value, monitor:Monitor.Value, dataTime:Timestamp, monitorType:String)={
     DB readOnly{
       implicit session =>
         sql"""
           Select *
           From manualAuditLog
-          Where tabType = ${tabTypeToIdMap(tabType)} and monitor=${monitor.toString()} and dataTime=${dataTime} and monitorType=${monitorType.toString}
+          Where tabType = ${tabTypeToIdMap(tabType)} and monitor=${monitor.toString()} and dataTime=${dataTime} and monitorType=${monitorType}
           """.map { 
           rs => ManualAuditLog(tabType=tabIdxMap(rs.int(1)),
                 monitor=Monitor.withName(rs.string(2)),
                 dataTime = rs.timestamp(3),
-                monitorType = MonitorType.withName(rs.string(4)),
+                monitorType = rs.string(4),
                 modified_time = rs.timestamp(5),
                 changed_status = rs.string(6),
                 operator = rs.string(7),
@@ -49,7 +49,7 @@ object ManualAuditLog {
           rs => ManualAuditLog(tabType=tabIdxMap(rs.int(1)),
                 monitor=Monitor.withName(rs.string(2)),
                 dataTime = rs.timestamp(3),
-                monitorType = MonitorType.withName(rs.string(4)),
+                monitorType = rs.string(4),
                 modified_time = rs.timestamp(5),
                 changed_status = rs.string(6),
                 operator = rs.string(7),
@@ -73,7 +73,7 @@ object ManualAuditLog {
     }
   }
  
-  def deleteLog(tabType:TableType.Value, monitor:Monitor.Value, dataTime:Timestamp, monitorType:MonitorType.Value)={
+  def deleteLog(tabType:TableType.Value, monitor:Monitor.Value, dataTime:Timestamp, monitorType:String)={
     DB localTx{
       implicit session =>
         sql"""

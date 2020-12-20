@@ -239,7 +239,7 @@ object Record {
   }
 
   def updateRecordStatus(tabType: TableType.Value, monitor: Monitor.Value,
-                         monitorType: MonitorType.Value, mill: Long, newStatus: String)(implicit session: DBSession = AutoSession) = {
+                         monitorType: String, mill: Long, newStatus: String)(implicit session: DBSession = AutoSession) = {
     val recordTime: DateTime = new Timestamp(mill)
     val monitorName = monitor.toString()
     val tab_name = getTabName(tabType)
@@ -250,8 +250,8 @@ object Record {
       Record.getMinRecords(monitor, recordTime, recordTime + 1.minute).head
 
     val updatedDataList = hr.dataList.map { mtr =>
-      val mt = MonitorType.withName(mtr.mtName)
-      if (mt == monitorType)
+      //val mt = MonitorType.withName(mtr.mtName)
+      if (mtr.mtName == monitorType.toString())
         MtRecord(mtr.mtName, mtr.value, newStatus)
       else
         mtr
@@ -787,6 +787,34 @@ object Record {
       val mtMap = recordMap.getOrElse(r.monitor, Map.empty[MonitorType.Value, Float])
       val newMtMap = mtMap ++ Map(r.monitorType -> r.value)
       recordMap = recordMap + (r.monitor -> newMtMap)
+    }
+    recordMap
+  }
+
+  def getEpaRecordMap(epaMonitorList: List[EpaMonitor.Value], monitorTypeList: List[MonitorType.Value], 
+      startTime: DateTime, endTime: DateTime)(implicit session: DBSession = AutoSession) = {
+    val start: Timestamp = startTime
+    val end: Timestamp = endTime
+    val monitorIdList = epaMonitorList.map(EpaMonitor.map(_).id)
+    val mStr = SQLSyntax.createUnsafely(monitorIdList.mkString("('", "','", "')"))
+    val monitorTypes = monitorTypeList.flatMap(MonitorType.map(_).epa_mapping)
+    val mtStr = SQLSyntax.createUnsafely(monitorTypes.mkString("('", "','", "')"))
+    val records =
+      sql"""
+        Select * 
+        From hour_data
+        Where MStation in ${mStr} and MItem in ${mtStr} and  MDate >= ${start} and MDate < ${end}
+      """.map {
+        rs => EpaHourRecord(EpaMonitor.idMap(rs.int(2)), rs.timestamp(3), MonitorType.epaMap(rs.string(4)), rs.float(5))
+      }.list().apply()
+
+    import scala.collection.mutable.Map
+    var recordMap = Map.empty[EpaMonitor.Value, Map[DateTime, Map[MonitorType.Value, Float]]]
+
+    records.foreach { r =>
+      val timeMap = recordMap.getOrElseUpdate(r.monitor, Map.empty[DateTime, Map[MonitorType.Value, Float]])
+      val mtMap = timeMap.getOrElseUpdate(r.time, Map.empty[MonitorType.Value, Float])
+      mtMap.put(r.monitorType, r.value)
     }
     recordMap
   }

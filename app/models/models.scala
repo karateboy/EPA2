@@ -75,6 +75,22 @@ object ModelHelper {
       Logger.error(prompt, ex)
       throw ex
   }
+  import scala.concurrent._
+
+  def waitReadyResult[T](f: Future[T]) = {
+    import scala.concurrent.duration._
+    import scala.util._
+
+    val ret = Await.ready(f, Duration.Inf).value.get
+
+    ret match {
+      case Success(t) =>
+        t
+      case Failure(ex) =>
+        Logger.error(ex.getMessage, ex)
+        throw ex
+    }
+  }
 }
 
 object EnumUtils {

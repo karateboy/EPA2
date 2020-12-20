@@ -21,6 +21,7 @@ object Global extends GlobalSettings {
     val exporter = Akka.system.actorOf(Props[Exporter], name = "exporter")
     Akka.system.scheduler.schedule(Duration(Exporter.secondTo8Am, SECONDS), Duration(1, DAYS), exporter, Exporter.Export)
     Uploader.init
+    OpenDataReceiver.startup()
   }
 
   override def onStop(app: Application) {

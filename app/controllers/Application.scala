@@ -511,7 +511,7 @@ class Application @Inject() (val messagesApi: MessagesApi) extends Controller wi
       Ok(views.html.history("/HistoryQueryReport/true/", group.privilege, epa_compare, true))
   }
 
-  case class ManualAudit(monitor: Monitor.Value, monitorType: MonitorType.Value, time: Long, status: String, reason: Option[String])
+  case class ManualAudit(monitor: Monitor.Value, monitorType: String, time: Long, status: String, reason: Option[String])
   case class ManualAuditList(list: Seq[ManualAudit])
   def manualAuditApply(recordTypeStr: String) = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>

@@ -46,6 +46,10 @@ object SystemConfig{
   def getApplyCalibration = SystemConfig.getConfig(ApplyCalibration, "True").toBoolean
   def setApplyCalibration(apply:Boolean) = SystemConfig.setConfig(ApplyCalibration, apply.toString())
   
+  val EpaLast = "EpaLast"
+  def getEpaLast = DateTime.parse(SystemConfig.getConfig(EpaLast, "2020-10-1 00:00"), DateTimeFormat.forPattern("yyyy-MM-dd HH:mm"))
+  def setEpaLast(dateTime: DateTime) = SystemConfig.setConfig(EpaLast, dateTime.toString("yyyy-MM-dd HH:mm"))
+
   var map = {
     val configPair =
       DB readOnly {

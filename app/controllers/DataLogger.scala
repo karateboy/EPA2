@@ -210,7 +210,12 @@ class DataLogger extends Controller {
             }
           }
 
-          hrList.foreach { hr =>
+          val auditedHrList = hrList map {
+            hr =>
+              Auditor.auditHourRecord(monitor, Monitor.map(monitor).autoAudit, hr)
+          }
+          
+          auditedHrList.foreach { hr =>
             try {
               hr.save(tabType)
               if(tabType == TableType.Hour)

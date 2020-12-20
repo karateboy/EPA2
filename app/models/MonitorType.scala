@@ -180,6 +180,15 @@ object MonitorType extends Enumeration {
   val epaMap = {
     map.filter(p => p._2.epa_mapping.isDefined).map(kv => (kv._2.epa_mapping.get, kv._1))
   }
+  
+  val epaIdMap = {
+    val pairs = 
+      for(epaMt <- epaList if MonitorType.map(epaMt).epa_mapping.isDefined)
+        yield {
+        MonitorType.map(epaMt).epa_mapping.get.toInt -> epaMt
+      }
+    pairs.toMap
+  }
 
   import com.github.nscala_time.time.Imports._
   import java.sql.Timestamp
@@ -193,7 +202,7 @@ object MonitorType extends Enumeration {
     if (tagInfo.statusType != StatusType.Manual)
       return ""
 
-    val auditLogOpt = ManualAuditLog.getLog(tabType, m, dataTime, mt)
+    val auditLogOpt = ManualAuditLog.getLog(tabType, m, dataTime, mt.toString())
     if (auditLogOpt.isEmpty)
       return ""
 

@@ -334,10 +334,10 @@ object Query {
               val mtCase = MonitorType.map(monitorTypes.filter { !MonitorType.windDirList.contains(_) }(0))
               Seq(
                 YAxis(
-                None,
-                AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))),
-                getAxisLines(mt),
-                gridLineWidth = Some(0)),
+                  None,
+                  AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))),
+                  getAxisLines(mt),
+                  gridLineWidth = Some(0)),
                 windYaxis)
             } else {
               Seq(
@@ -432,14 +432,15 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
     implicit request =>
 
       import scala.collection.JavaConverters._
+      import scala.collection.mutable.Map
       val monitorStrArray = monitorStr.split(':')
       val monitors = monitorStrArray.map { Monitor.withName }
       val epaMonitors = if (epaMonitorStr.equalsIgnoreCase("None"))
         Array.empty[EpaMonitor.Value]
       else
         epaMonitorStr.split(':').map { EpaMonitor.withName }
-
-      val monitorType = MonitorType.withName(monitorTypeStr)
+      
+      val monitorTypes = monitorTypeStr.split(':').map(MonitorType.withName)
       val tableType = TableType.withName(recordTypeStr)
       val start =
         DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
@@ -457,28 +458,26 @@ class Query @Inject() (val messagesApi: MessagesApi) extends Controller with I18
             Record.getHourRecords(m, start, end)
           else
             Record.getMinRecords(m, start, end)
-          mtRecords = records.map { rs => (Record.timeProjection(rs).toDateTime, Record.monitorTypeProject2(monitorType)(rs)) }
-          timeMap = Map(mtRecords: _*)
         } yield {
+          val mtRecordMaps = records.map {
+            rs =>
+              val mtPairs =
+                for (mt <- monitorTypes) yield {
+                  mt -> Record.monitorTypeProject2(mt)(rs)
+                }
+              Record.timeProjection(rs).toDateTime() -> Map(mtPairs: _*)
+          }
+          val timeMap = Map(mtRecordMaps: _*)
           timeSet ++= timeMap.keySet
           (m -> timeMap)
         }
 
       val recordMap = Map(pairs: _*)
 
-      val epa_pairs =
-        for {
-          epa <- epaMonitors
-          records = Record.getEpaHourRecord(epa, monitorType, start, end)
-          timeRecords = records.map { t => t.time -> t.value }
-          timeMap = Map(timeRecords: _*)
-        } yield {
-          epa -> timeMap
-        }
-      val epaRecordMap = Map(epa_pairs: _*)
+      val epaRecordMap = Record.getEpaRecordMap(epaMonitors.toList, monitorTypes.toList, start, end)
       val title = "歷史資料查詢"
       val output =
-        views.html.historyReport(edit, monitors, epaMonitors, monitorType, start, end, timeSet.toList.sorted, recordMap, epaRecordMap, false, tableType.toString)
+        views.html.historyReport(edit, monitors, epaMonitors, monitorTypes, start, end, timeSet.toList.sorted, recordMap, epaRecordMap, false, tableType.toString)
       outputType match {
         case OutputType.html =>
           Ok(output)

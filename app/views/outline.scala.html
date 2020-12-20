@@ -160,7 +160,7 @@
             }
             @if(privilege.allowedMenuRights.contains(MenuRight.Report)){
             <li>
-                <a href="#"><i class="fa fa-table"></i> <span class="nav-label">@Messages("menu.report.1")</span></a>
+                <a href="#"><i class="fa fa-table"></i> <span class="nav-label">@Messages("menu.report.1")</span><span class="fa arrow"></span></a>
                 <ul class="nav nav-second-level">
                     <li><a href="#" onClick="loadPage('/report/@ReportType.MonitorReport','@Messages("menu.report.1")','@Messages("menu.report.2")')">@Messages("menu.report.2")</a></li>
                     @if(epa_compare){

@@ -21,9 +21,9 @@ object PeriodReport extends Enumeration {
   val MonthlyReport = Value("monthly")
   //val MinMonthlyReport = Value("MinMonthly")
   val YearlyReport = Value("yearly")
-  def map = Map(DailyReport -> "日報", MonthlyReport -> "月報", 
-      /*MinMonthlyReport -> "分鐘月報", */
-      YearlyReport -> "年報")
+  def map = Map(DailyReport -> "日報", MonthlyReport -> "月報",
+    /*MinMonthlyReport -> "分鐘月報", */
+    YearlyReport -> "年報")
 }
 
 object ReportType extends Enumeration {
@@ -443,7 +443,8 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
         case OutputType.html =>
           Ok(output)
         case OutputType.pdf =>
-          Ok.sendFile(creatPdfWithReportHeader(title, output),
+          Ok.sendFile(
+            creatPdfWithReportHeader(title, output),
             fileName = _ =>
               play.utils.UriEncoding.encodePathSegment(Monitor.map(monitor).name + title + startDate.toString("YYYYMM") + ".pdf", "UTF-8"))
       }
@@ -500,8 +501,16 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
                   val windSpeed = getTypeStat(windSpeed_pos)
                   val windDir = typeStat
                   val wind = windSpeed.zip(windDir).filter(t => t._1.count != 0 && t._2.count != 0)
-                  val wind_sin = wind.map(v => v._1.avg.get * Math.sin(Math.toRadians(v._2.avg.get))).sum
-                  val wind_cos = wind.map(v => v._1.avg.get * Math.cos(Math.toRadians(v._2.avg.get))).sum
+                  val windSinCosList =
+                    for {
+                      v <- wind
+                      avg <- v._1.avg
+                    } yield (avg * Math.sin(Math.toRadians(avg)), avg * Math.cos(Math.toRadians(avg)))
+                  val (wind_sin, wind_cos) = windSinCosList.foldRight((0d, 0d))((a, b) =>
+                    (a._1 + b._1, a._2 + b._2))
+                  //val sum = winSinCosList.f
+                  //wind.map(v => v._1.avg.get * Math.sin(Math.toRadians(v._2.avg.get))).sum
+                  //val wind_cos = wind.map(v => v._1.avg.get * Math.cos(Math.toRadians(v._2.avg.get))).sum
                   windAvg(wind_sin, wind_cos)
                 } else
                   validData.flatMap { _.avg }.sum / count
@@ -541,7 +550,8 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
           case OutputType.html =>
             Ok(output)
           case OutputType.pdf =>
-            Ok.sendFile(creatPdfWithReportHeader(title, output),
+            Ok.sendFile(
+              creatPdfWithReportHeader(title, output),
               fileName = _ =>
                 play.utils.UriEncoding.encodePathSegment(Monitor.map(monitor).name + title + startTime.toString("YYYYMMdd") + ".pdf", "UTF-8"))
         }
@@ -559,7 +569,7 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
               val nDay = monthlyReport.typeArray(0).dataList.length
               ("月報" + startTime.toString("YYYYMM"), ExcelUtility.createMonthlyReport(monitor, adjustStartDate, monthlyReport, nDay))
 
-            /*  
+            /*
             case PeriodReport.MinMonthlyReport =>
               Logger.error("Shall not be there...")
               val adjustStartDate = DateTime.parse(startTime.toString("YYYY-MM-1"))
@@ -581,9 +591,8 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
       }
   }
 
-  def getMinMonthlySocket = WebSocket.acceptWithActor[String, String] { request =>
-    out =>
-      MinMonthlyReportWorker.props(out)
+  def getMinMonthlySocket = WebSocket.acceptWithActor[String, String] { request => out =>
+    MinMonthlyReportWorker.props(out)
   }
 
   def downloadMinMontlyReport(n: Int) = Security.Authenticated {
@@ -600,7 +609,7 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
       val group = Group.getGroup(userInfo.groupID).get
       Ok(views.html.psiReport(group.privilege))
   }
-  
+
   def psiExplain = Security.Authenticated {
     implicit request =>
       val userInfo = Security.getUserinfo(request).get
@@ -650,14 +659,15 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
           case OutputType.html =>
             Ok(output)
           case OutputType.pdf =>
-            Ok.sendFile(creatPdfWithReportHeader(title, output),
+            Ok.sendFile(
+              creatPdfWithReportHeader(title, output),
               fileName = _ =>
                 play.utils.UriEncoding.encodePathSegment(Monitor.map(monitor).name + title + startDate.toString("YYYYMMdd") + ".pdf", "UTF-8"))
         }
       }
   }
 
-    def aqiExplain = Security.Authenticated {
+  def aqiExplain = Security.Authenticated {
     implicit request =>
       val userInfo = Security.getUserinfo(request).get
       val group = Group.getGroup(userInfo.groupID).get
@@ -723,13 +733,13 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
           case OutputType.html =>
             Ok(output)
           case OutputType.pdf =>
-            Ok.sendFile(creatPdfWithReportHeader(title, output),
+            Ok.sendFile(
+              creatPdfWithReportHeader(title, output),
               fileName = _ =>
                 play.utils.UriEncoding.encodePathSegment(Monitor.map(monitor).name + title + startDate.toString("YYYYMMdd") + ".pdf", "UTF-8"))
         }
       }
   }
-
 
   def effectiveQuery() = Security.Authenticated {
     implicit request =>
@@ -790,7 +800,8 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
           case OutputType.html =>
             Ok(output)
           case OutputType.pdf =>
-            Ok.sendFile(creatPdfWithReportHeader(title, output),
+            Ok.sendFile(
+              creatPdfWithReportHeader(title, output),
               fileName = _ =>
                 play.utils.UriEncoding.encodePathSegment(title + adjustedStart.toString("YYYY") + ".pdf", "UTF-8"))
         }
@@ -834,7 +845,8 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
           case OutputType.html =>
             Ok(output)
           case OutputType.pdf =>
-            Ok.sendFile(creatPdfWithReportHeader(title, output),
+            Ok.sendFile(
+              creatPdfWithReportHeader(title, output),
               fileName = _ =>
                 play.utils.UriEncoding.encodePathSegment(title + reportDate.toString("YYYY-MM-dd") + ".pdf", "UTF-8"))
         }
@@ -913,7 +925,8 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
           case OutputType.html =>
             Ok(output)
           case OutputType.pdf =>
-            Ok.sendFile(creatPdfWithReportHeader(title, output),
+            Ok.sendFile(
+              creatPdfWithReportHeader(title, output),
               fileName = _ =>
                 play.utils.UriEncoding.encodePathSegment(title + reportDate.toString("YYYYMMdd") + ".pdf", "UTF-8"))
         }
@@ -965,7 +978,8 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
         case OutputType.html =>
           Ok(output)
         case OutputType.pdf =>
-          Ok.sendFile(creatPdfWithReportHeader(title, output),
+          Ok.sendFile(
+            creatPdfWithReportHeader(title, output),
             fileName = _ =>
               play.utils.UriEncoding.encodePathSegment(title + date.toString("YYYYMMdd") + ".pdf", "UTF-8"))
 
@@ -1032,7 +1046,8 @@ class Report @Inject() (val messagesApi: MessagesApi) extends Controller with I1
         case OutputType.html =>
           Ok(output)
         case OutputType.pdf =>
-          Ok.sendFile(creatPdfWithReportHeader(title, output),
+          Ok.sendFile(
+            creatPdfWithReportHeader(title, output),
             fileName = _ =>
               play.utils.UriEncoding.encodePathSegment(title + date.toString("YYYYMMdd") + ".pdf", "UTF-8"))
         case OutputType.excel =>
