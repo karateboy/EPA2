@@ -1,60 +1,72 @@
 package models
 
-import akka.actor.{ Actor, ActorLogging, Props, ActorRef }
-import javax.xml.ws.Holder
-import play.api.Play.current
-import play.api.libs.concurrent.Akka
-import play.api._
-import play.api.libs.ws._
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import akka.actor.actorRef2Scala
-import scala.concurrent.ExecutionContext.Implicits.global
-import scalikejdbc._
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import models.ModelHelper._
+import play.api.Play.current
+import play.api._
+import play.api.libs.concurrent.Akka
+import play.api.libs.ws._
+import scalikejdbc._
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object OpenDataReceiver {
   val props = Props[OpenDataReceiver]
-  case object GetEpaHourData
-
   var receiver: ActorRef = _
+
   def startup() = {
     receiver = Akka.system.actorOf(props, name = "openDataReceiver")
     Logger.info(s"OpenData receiver starts")
   }
+
+  case object GetEpaHourData
 }
 
 import java.util.Date
+
 case class HourData(
-  SiteId:        String,
-  SiteName:      String,
-  ItemId:        String,
-  ItemName:      String,
-  ItemEngName:   String,
-  ItemUnit:      String,
-  MonitorDate:   Date,
-  MonitorValues: Seq[Double])
+                     SiteId: String,
+                     SiteName: String,
+                     ItemId: String,
+                     ItemName: String,
+                     ItemEngName: String,
+                     ItemUnit: String,
+                     MonitorDate: Date,
+                     MonitorValues: Seq[Double])
 
 class OpenDataReceiver extends Actor with ActorLogging {
+
   import OpenDataReceiver._
   import com.github.nscala_time.time.Imports._
+
   val timer = {
     import scala.concurrent.duration._
     Akka.system.scheduler.schedule(Duration(5, SECONDS), Duration(1, HOURS), receiver, GetEpaHourData)
   }
 
   import scala.xml._
+
+  def receive = {
+    case GetEpaHourData =>
+      val start = SystemConfig.getEpaLast - 1.day
+      val end = DateTime.now().withMillisOfDay(0)
+      if (start < end) {
+        getEpaHourData(start, end)
+      }
+  }
+
   def getEpaHourData(start: DateTime, end: DateTime) {
     Logger.info(s"get EPA data start=${start.toString()} end=${end.toString()}")
-    val limit = 1000
+    val limit = 500
+
     def parser(node: Elem) = {
-      import scala.xml.Node
       import scala.collection.mutable.Map
+      import scala.xml.Node
       val recordMap = Map.empty[EpaMonitor.Value, Map[DateTime, Map[MonitorType.Value, Double]]]
 
       def filter(dataNode: Node) = {
         val monitorDateOpt = dataNode \ "MonitorDate"
-        val mDate = DateTime.parse(s"${monitorDateOpt.text.trim()}", DateTimeFormat.forPattern("YYYY-MM-dd"))
+        val mDate = DateTime.parse(s"${monitorDateOpt.text.trim()}", DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
         start <= mDate && mDate < end
       }
 
@@ -69,7 +81,7 @@ class OpenDataReceiver extends Actor with ActorLogging {
             MonitorType.epaIdMap.contains(itemId.text.trim().toInt)) {
             val epaMonitor = EpaMonitor.withName(siteName.text.trim())
             val monitorType = MonitorType.epaIdMap(itemId.text.trim().toInt)
-            val mDate = DateTime.parse(s"${monitorDateOpt.text.trim()}", DateTimeFormat.forPattern("YYYY-MM-dd"))
+            val mDate = DateTime.parse(s"${monitorDateOpt.text.trim()}", DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
 
             val monitorNodeValueSeq =
               for (v <- 0 to 23) yield {
@@ -83,7 +95,7 @@ class OpenDataReceiver extends Actor with ActorLogging {
               }
 
             val timeMap = recordMap.getOrElseUpdate(epaMonitor, Map.empty[DateTime, Map[MonitorType.Value, Double]])
-            for { (mDate, mtValueOpt) <- monitorNodeValueSeq } {
+            for {(mDate, mtValueOpt) <- monitorNodeValueSeq} {
               val mtMap = timeMap.getOrElseUpdate(mDate, Map.empty[MonitorType.Value, Double])
               for (mtValue <- mtValueOpt)
                 mtMap.put(monitorType, mtValue)
@@ -95,11 +107,13 @@ class OpenDataReceiver extends Actor with ActorLogging {
         }
       }
 
-      val data = node \ "Data"
+      val data = node \ "data"
 
       val qualifiedData = data.filter(filter)
 
-      qualifiedData.map { processData }
+      qualifiedData.map {
+        processData
+      }
 
       val updateCounts =
         for {
@@ -117,7 +131,7 @@ class OpenDataReceiver extends Actor with ActorLogging {
               UPDATE dbo.hour_data
               SET MValue = ${mtValue._2}
               WHERE MStation=${MStation.id} and MDate=${MDate} and MItem=${MItem};
-    
+
               IF(@@ROWCOUNT = 0)
               BEGIN
                 INSERT INTO dbo.hour_data (MStation, MDate, MItem, MValue)
@@ -126,13 +140,15 @@ class OpenDataReceiver extends Actor with ActorLogging {
             """.update.apply
           }
         }
+      if(updateCounts.sum != 0)
+        Logger.info(s"EPA ${updateCounts.sum} records have been upserted.")
 
-      updateCounts.sum
+      qualifiedData.size
     }
 
     def getData(skip: Int) {
-      val url = s"https://opendata.epa.gov.tw/webapi/api/rest/datastore/355000000I-000027/?format=xml&limit=${limit}&offset=${skip}&orderby=MonitorDate%20desc&token=00k8zvmeJkieHA9w13JvOw"
-      val retFuture =
+      val url = s"https://data.epa.gov.tw/api/v1/aqx_p_15?format=xml&offset=${skip}&limit=${limit}&api_key=fa3fdec2-19b2-4108-a7f0-63ea3a9a776a"
+      val future =
         WS.url(url).get().map {
           response =>
             try {
@@ -143,25 +159,19 @@ class OpenDataReceiver extends Actor with ActorLogging {
                 throw ex
             }
         }
-      val ret = waitReadyResult(retFuture)
-      Logger.info(s"EPA ${ret} records have been upserted.")
-      
-      if (ret < limit) {
-        SystemConfig.setEpaLast(end)
-      } else
-        getData(skip + limit)
+      future onFailure (errorHandler())
+      future onSuccess ({
+        case ret: Int =>
+          Logger.info(s"EPA ${ret} records have been upserted.")
+          if (ret < limit) {
+            Logger.info(s"Import EPA ${start.toString()} to ${end} complete")
+            SystemConfig.setEpaLast(end)
+          } else
+            getData(skip + limit)
+      })
     }
 
     getData(0)
-  }
-
-  def receive = {
-    case GetEpaHourData =>
-      val start = SystemConfig.getEpaLast - 7.day
-      val end = DateTime.now().withMillisOfDay(0)
-      if (start < end) {
-        getEpaHourData(start, end)
-      }
   }
 
   override def postStop = {
