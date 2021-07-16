@@ -1,38 +1,44 @@
 package controllers
-import play.api._
-import play.api.mvc._
-import play.api.Logger
-import models._
-import models.Realtime._
+
 import com.github.nscala_time.time.Imports._
+import controllers.PdfUtility._
 import models.ModelHelper._
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import PdfUtility._
-import models.ModelHelper._
+import models.Realtime._
+import models.{AQI, _}
+import play.api.Logger
 import play.api.Play.current
-import java.sql.Timestamp
-import Record._
-import javax.inject._
 import play.api.i18n._
+import play.api.libs.functional.syntax._
+import play.api.libs.json._
+import play.api.mvc._
+
+import java.sql.Timestamp
+import javax.inject._
 
 case class XAxis(categories: Option[Seq[String]], gridLineWidth: Option[Int] = None, tickInterval: Option[Int] = None)
+
 case class AxisLineLabel(align: String, text: String)
+
 case class AxisLine(color: String, width: Int, value: Float, label: Option[AxisLineLabel])
+
 case class AxisTitle(text: Option[Option[String]])
+
 case class YAxis(labels: Option[String], title: AxisTitle, plotLines: Option[Seq[AxisLine]], opposite: Boolean = false,
                  floor: Option[Int] = None, ceiling: Option[Int] = None, min: Option[Int] = None, max: Option[Int] = None, tickInterval: Option[Int] = None,
                  gridLineWidth: Option[Int] = None, gridLineColor: Option[String] = None)
 
 case class seqData(name: String, data: Seq[Seq[Option[Double]]], yAxis: Int = 0, chartType: Option[String] = None,
                    status: Option[Seq[Option[String]]] = None)
+
 case class HighchartData(chart: Map[String, String],
                          title: Map[String, String],
                          xAxis: XAxis,
                          yAxis: Seq[YAxis],
                          series: Seq[seqData],
                          downloadFileName: Option[String] = None)
+
 case class FrequencyTab(header: Seq[String], body: Seq[Seq[String]], footer: Seq[String])
+
 case class WindRoseReport(chart: HighchartData, table: FrequencyTab)
 
 object Realtime {
@@ -45,16 +51,18 @@ object Realtime {
 
   implicit val seqDataWrite: Writes[seqData] = (
     (__ \ "name").write[String] and
-    (__ \ "data").write[Seq[Seq[Option[Double]]]] and
-    (__ \ "yAxis").write[Int] and
-    (__ \ "type").write[Option[String]] and
-    (__ \ "status").write[Option[Seq[Option[String]]]])(unlift(seqData.unapply))
+      (__ \ "data").write[Seq[Seq[Option[Double]]]] and
+      (__ \ "yAxis").write[Int] and
+      (__ \ "type").write[Option[String]] and
+      (__ \ "status").write[Option[Seq[Option[String]]]]) (unlift(seqData.unapply))
   implicit val hcWrite = Json.writes[HighchartData]
   implicit val feqWrite = Json.writes[FrequencyTab]
   implicit val wrWrite = Json.writes[WindRoseReport]
 
 }
-class Realtime @Inject() (val messagesApi: MessagesApi) extends Controller with I18nSupport {
+
+class Realtime @Inject()(val messagesApi: MessagesApi) extends Controller with I18nSupport {
+
   import Realtime._
 
   def realtimeStat(outputTypeStr: String) = Security.Authenticated {
@@ -82,15 +90,32 @@ class Realtime @Inject() (val messagesApi: MessagesApi) extends Controller with 
       }
   }
 
+  case class AqiSubIndex(name:String, value: Option[Float], aqi: Option[Float])
+  case class AqiResult(time: String, aqi: Option[Float], subIndex: Seq[AqiSubIndex])
+  def realtimeAQI() = Action {
+    implicit request =>
+      val currentHr = getLatestRecordTime(TableType.Hour).getOrElse(DateTime.now.withMinuteOfHour(0): Timestamp)
+      val aqiMap = AQI.getRealtimeAQI(currentHr)
+      val aqi: (Option[Float], Map[AQI.Value, (Option[Float], Option[Float])]) = aqiMap(Monitor.mvList(0))
+
+      val subIndex = aqi._2.map(kp => { AqiSubIndex(kp._1.toString, kp._2._1, kp._2._2)})
+      val ret = AqiResult(currentHr.toString, aqi._1, subIndex.toList)
+      implicit val w = Json.writes[AqiSubIndex]
+      implicit val w2 = Json.writes[AqiResult]
+      Ok(Json.toJson(ret))
+  }
+
   def realtimeImg = Security.Authenticated {
     implicit request =>
       val userInfo = Security.getUserinfo(request).get
       val group = Group.getGroup(userInfo.groupID).get
+
       def listAllFiles = {
         //import java.io.FileFilter
         val allFiles = new java.io.File("\\\\PC-PC\\tsmc\\").listFiles().toList
         allFiles.filter(p => p != null).sortBy { f => f.lastModified() }.reverse
       }
+
       val imgFileList = listAllFiles
       if (!imgFileList.isEmpty) {
         import java.nio.file._
@@ -127,9 +152,13 @@ class Realtime @Inject() (val messagesApi: MessagesApi) extends Controller with 
   def realtimeHourTrendChart(monitorStr: String, monitorTypeStr: String) = Security.Authenticated {
     implicit request =>
       val monitorStrArray = monitorStr.split(':')
-      val monitors = monitorStrArray.map { Monitor.withName }
+      val monitors = monitorStrArray.map {
+        Monitor.withName
+      }
       val monitorTypeStrArray = monitorTypeStr.split(':')
-      val monitorTypes = monitorTypeStrArray.map { MonitorType.withName }
+      val monitorTypes = monitorTypeStrArray.map {
+        MonitorType.withName
+      }
 
       val current = getLatestRecordTime(TableType.Hour).getOrElse(DateTime.now.withMinuteOfHour(0): Timestamp)
       val reportUnit = ReportUnit.Hour
@@ -146,9 +175,13 @@ class Realtime @Inject() (val messagesApi: MessagesApi) extends Controller with 
   def realtimeMinTrendChart(monitorStr: String, monitorTypeStr: String) = Security.Authenticated {
     implicit request =>
       val monitorStrArray = monitorStr.split(':')
-      val monitors = monitorStrArray.map { Monitor.withName }
+      val monitors = monitorStrArray.map {
+        Monitor.withName
+      }
       val monitorTypeStrArray = monitorTypeStr.split(':')
-      val monitorTypes = monitorTypeStrArray.map { MonitorType.withName }
+      val monitorTypes = monitorTypeStrArray.map {
+        MonitorType.withName
+      }
 
       val current = getLatestRecordTime(TableType.Min).getOrElse(DateTime.now.withSecond(0): Timestamp)
       val reportUnit = ReportUnit.Min
@@ -179,12 +212,6 @@ class Realtime @Inject() (val messagesApi: MessagesApi) extends Controller with 
         MonitorStatusFilter.ValidData, currentDateTime - 1.hour, currentDateTime)
       Ok(Json.toJson(chart))
   }
-
-  case class MonitorInfo(id: String, status: Int, winDir: Float, winSpeed: Float, statusStr: String)
-  case class RealtimeMapInfo(info: Seq[MonitorInfo])
-
-  implicit val monitorInfoWrite = Json.writes[MonitorInfo]
-  implicit val mapInfoWrite = Json.writes[RealtimeMapInfo]
 
   def realtimeMap = Security.Authenticated {
     implicit request =>
@@ -255,4 +282,11 @@ class Realtime @Inject() (val messagesApi: MessagesApi) extends Controller with 
     out =>
       AlarmNotifier.props(out)
   }
+
+  implicit val monitorInfoWrite = Json.writes[MonitorInfo]
+  implicit val mapInfoWrite = Json.writes[RealtimeMapInfo]
+
+  case class MonitorInfo(id: String, status: Int, winDir: Float, winSpeed: Float, statusStr: String)
+
+  case class RealtimeMapInfo(info: Seq[MonitorInfo])
 }
