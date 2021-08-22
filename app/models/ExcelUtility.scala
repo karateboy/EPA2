@@ -56,14 +56,14 @@ object ExcelUtility {
 
     style.setFont(font)
     style.setDataFormat(format.getFormat(format_str))
-    style.setBorderBottom(CellStyle.BORDER_THIN);
-    style.setBottomBorderColor(IndexedColors.BLACK.getIndex());
-    style.setBorderLeft(CellStyle.BORDER_THIN);
-    style.setLeftBorderColor(IndexedColors.BLACK.getIndex());
-    style.setBorderRight(CellStyle.BORDER_THIN);
-    style.setRightBorderColor(IndexedColors.BLACK.getIndex());
-    style.setBorderTop(CellStyle.BORDER_THIN);
-    style.setTopBorderColor(IndexedColors.BLACK.getIndex());
+    style.setBorderBottom(BorderStyle.THIN)
+    style.setBottomBorderColor(IndexedColors.BLACK.getIndex())
+    style.setBorderLeft(BorderStyle.THIN)
+    style.setLeftBorderColor(IndexedColors.BLACK.getIndex())
+    style.setBorderRight(BorderStyle.THIN)
+    style.setRightBorderColor(IndexedColors.BLACK.getIndex())
+    style.setBorderTop(BorderStyle.THIN)
+    style.setTopBorderColor(IndexedColors.BLACK.getIndex())
     style
   }
 
@@ -278,7 +278,7 @@ object ExcelUtility {
       import org.apache.poi.hssf.util.HSSFColor
       def createInvalidStyle(mt: MonitorType.Value) = {
         val style = createStyle(mt)
-        style.setFillForegroundColor(HSSFColor.RED.index)
+        style.setFillForegroundColor(HSSFColor.HSSFColorPredefined.RED.getIndex)
         style.setFillPattern(FillPatternType.SOLID_FOREGROUND)
         style
       }

@@ -715,4 +715,10 @@ class Application @Inject() (val messagesApi: MessagesApi) extends Controller wi
           Ok(Json.obj("ok" -> true))
         })
   }
+  def reloadEpaData(start:Long, end:Long)= Security.Authenticated {
+    val startDate = new DateTime(start).withMillisOfDay(0)
+    val endDate = new DateTime(end).withMillisOfDay(0)
+    OpenDataReceiver.reloadEpaData(startDate, endDate)
+    Ok("")
+  }
 }

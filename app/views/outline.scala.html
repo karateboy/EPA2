@@ -65,17 +65,15 @@
 	<script src='@routes.Assets.at("js/plugins/pace/pace.min.js")'></script>	
 	<script src='@routes.Assets.at("js/plugins/slimscroll/jquery.slimscroll.min.js")'></script>    
 	<script src='@routes.Assets.at("js/plugins/iCheck/icheck.min.js")'></script>
-    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
-    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-    <!--[if lt IE 9]>
-        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
-        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
-    <![endif]-->
-        
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.1.10/vue.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.14/vue.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js">
     	axios.defaults.withCredentials = true
     </script>
+    <script src="https://unpkg.com/moment@@2.29.1/moment.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/vue2-datepicker/index.css">
+    <script src="https://unpkg.com/vue2-datepicker/index.min.js"></script>
+    <script>Vue.use('DatePicker', DatePicker);</script>
             
     <script type="text/javascript"
       src="http://maps.googleapis.com/maps/api/js?key=AIzaSyCFuSnApEhdYSANwfU4OZ4tH902Tu3vjFI">
@@ -200,7 +198,8 @@
                     <li><a href="#" onClick="loadPage('/GroupManagement','@Messages("menu.sys.1")','@Messages("menu.sys.9")')">@Messages("menu.sys.9")</a></li>                   
                     <li><a href="#" onClick="loadPage('/UserManagement','@Messages("menu.sys.1")','@Messages("menu.sys.10")')">@Messages("menu.sys.10")</a></li>
                     <li><a href="#" onClick="loadPage('/RecordValidation','@Messages("menu.sys.1")','@Messages("menu.sys.11")')">@Messages("menu.sys.11")</a></li>
-                    <li><a href="#" onClick="loadPage('/InstrumentCmdView','@Messages("menu.sys.1")','@Messages("menu.sys.14")')">@Messages("menu.sys.14")</a></li>                    
+                    <li><a href="#" onClick="loadPage('/InstrumentCmdView','@Messages("menu.sys.1")','@Messages("menu.sys.14")')">@Messages("menu.sys.14")</a></li>
+                    <li><a href="#" onClick="loadPage('/assets/html/reloadEpaRecord.html','@Messages("menu.sys.1")','@Messages("menu.sys.15")')">@Messages("menu.sys.15")</a></li>
                  </ul>
             </li>
             }

@@ -160,6 +160,7 @@ GET      /ManualAuditQueryReport/:monitor/:start/:end                           
 GET      /PDF/ManualAuditQueryReport/:monitor/:start/:end                                      controllers.Application.manualAuditQueryReport(monitor, start, end, outputType="pdf")
 GET      /Excel/ManualAuditQueryReport/:monitor/:start/:end                                    controllers.Application.manualAuditQueryReport(monitor, start, end, outputType="excel")
 
+GET      /ReloadEpaData/:start/:end                                                            controllers.Application.reloadEpaData(start:Long, end:Long)
 GET      /AuditConfig                                                                          controllers.Application.auditConfig
 GET      /AuditConfig/:monitor                                                                 controllers.Application.getMonitorAuditConfig(monitor)
 POST     /AuditConfig/:monitor                                                                 controllers.Application.setMonitorAuditConfig(monitor)

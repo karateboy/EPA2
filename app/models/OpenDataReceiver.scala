@@ -1,6 +1,7 @@
 package models
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import com.github.nscala_time.time.Imports.DateTime
 import models.ModelHelper._
 import play.api.Play.current
 import play.api._
@@ -19,7 +20,13 @@ object OpenDataReceiver {
     Logger.info(s"OpenData receiver starts")
   }
 
+  def reloadEpaData(start:DateTime, end:DateTime): Unit = {
+    receiver ! ReloadEpaData(start, end)
+  }
+
   case object GetEpaHourData
+  case class ReloadEpaData(start:DateTime, end:DateTime)
+
 }
 
 import java.util.Date
@@ -53,6 +60,11 @@ class OpenDataReceiver extends Actor with ActorLogging {
       if (start < end) {
         getEpaHourData(start, end)
       }
+
+    case ReloadEpaData(start, end) =>
+      Logger.info(s"reload EpaData ${start} ${end}")
+      getEpaHourData(start, end)
+
   }
 
   def getEpaHourData(start: DateTime, end: DateTime) {

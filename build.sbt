@@ -1,9 +1,9 @@
 
 name := """epa2"""
 
-version := "1.0.27"
+version := "1.0.29"
 
-lazy val root = (project in file(".")).enablePlugins(PlayScala)
+lazy val root = (project in file(".")).enablePlugins(PlayScala, LauncherJarPlugin)
 
 scalaVersion := "2.11.11"
 
@@ -16,6 +16,11 @@ libraryDependencies ++= Seq(
   "org.scalikejdbc" %% "scalikejdbc-play-initializer" % "2.5.1",
   "com.github.nscala-time" %% "nscala-time" % "2.16.0"
 )
+// https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
+libraryDependencies += "org.apache.poi" % "poi-ooxml" % "5.0.0"
+
+// https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc
+// libraryDependencies += "com.microsoft.sqlserver" % "mssql-jdbc" % "9.4.0.jre8"
 
 mappings in Universal ++=
   (baseDirectory.value / "report_template" * "*" get) map

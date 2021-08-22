@@ -175,7 +175,7 @@ object MonitorType extends Enumeration {
     List(PM10, PM25, SO2, NOx, CO, O3, THC, NO, CH4, NO2, NMHC, WD_SPEED, WD_DIR, RAIN, TEMP, HUMID)
 
   val epaReportList =
-    List(WD_DIR, WD_SPEED, SO2, NO2, CO, O3, PM10, THC, NMHC)
+    List(WD_DIR, WD_SPEED, SO2, NO2, CO, O3, PM10, THC, NMHC, PM25)
 
   val epaMap = {
     map.filter(p => p._2.epa_mapping.isDefined).map(kv => (kv._2.epa_mapping.get, kv._1))
