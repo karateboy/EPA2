@@ -1,7 +1,7 @@
 
 name := """epa2"""
 
-version := "1.0.29"
+version := "1.0.30"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala, LauncherJarPlugin)
 
@@ -20,7 +20,16 @@ libraryDependencies ++= Seq(
 libraryDependencies += "org.apache.poi" % "poi-ooxml" % "5.0.0"
 
 // https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc
-// libraryDependencies += "com.microsoft.sqlserver" % "mssql-jdbc" % "9.4.0.jre8"
+libraryDependencies += "com.microsoft.sqlserver" % "mssql-jdbc" % "9.4.0.jre8"
+
+// https://mvnrepository.com/artifact/com.itextpdf/itextpdf
+libraryDependencies += "com.itextpdf" % "itextpdf" % "5.5.13.2"
+
+// https://mvnrepository.com/artifact/com.itextpdf.tool/xmlworker
+libraryDependencies += "com.itextpdf.tool" % "xmlworker" % "5.5.13.2"
+
+// https://mvnrepository.com/artifact/org.jsoup/jsoup
+libraryDependencies += "org.jsoup" % "jsoup" % "1.14.2"
 
 mappings in Universal ++=
   (baseDirectory.value / "report_template" * "*" get) map
