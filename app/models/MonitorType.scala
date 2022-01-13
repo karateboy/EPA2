@@ -174,6 +174,15 @@ object MonitorType extends Enumeration {
   val epaList =
     List(PM10, PM25, SO2, NOx, CO, O3, THC, NO, CH4, NO2, NMHC, WD_SPEED, WD_DIR, RAIN, TEMP, HUMID)
 
+  val eapIdMap = {
+    val pairs =
+      for(epaMt <- epaList if MonitorType.map(epaMt).epa_mapping.isDefined)
+        yield {
+          MonitorType.map(epaMt).epa_mapping.get.toInt -> epaMt
+        }
+    pairs.toMap
+  }
+
   val epaReportList =
     List(WD_DIR, WD_SPEED, SO2, NO2, CO, O3, PM10, THC, NMHC, PM25)
 

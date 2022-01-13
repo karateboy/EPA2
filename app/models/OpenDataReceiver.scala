@@ -26,7 +26,6 @@ object OpenDataReceiver {
 
   case object GetEpaHourData
   case class ReloadEpaData(start:DateTime, end:DateTime)
-
 }
 
 import java.util.Date
@@ -48,27 +47,26 @@ class OpenDataReceiver extends Actor with ActorLogging {
 
   val timer = {
     import scala.concurrent.duration._
-    Akka.system.scheduler.schedule(Duration(5, SECONDS), Duration(1, HOURS), receiver, GetEpaHourData)
+    context.system.scheduler.schedule(Duration(5, SECONDS), Duration(3, HOURS), receiver, GetEpaHourData)
   }
 
   import scala.xml._
 
   def receive = {
     case GetEpaHourData =>
-      val start = SystemConfig.getEpaLast - 1.day
+      val start = SystemConfig.getEpaLast
       val end = DateTime.now().withMillisOfDay(0)
       if (start < end) {
+        Logger.info(s"Get EpaData ${start.toString("yyyy-MM-d")} => ${end.toString("yyyy-MM-d")}")
         getEpaHourData(start, end)
       }
 
     case ReloadEpaData(start, end) =>
-      Logger.info(s"reload EpaData ${start} ${end}")
+      Logger.info(s"reload EpaData ${start.toString("yyyy-MM-d")} => ${end.toString("yyyy-MM-d")}")
       getEpaHourData(start, end)
-
   }
 
   def getEpaHourData(start: DateTime, end: DateTime) {
-    Logger.info(s"get EPA data start=${start.toString()} end=${end.toString()}")
     val limit = 500
 
     def parser(node: Elem) = {
@@ -78,7 +76,14 @@ class OpenDataReceiver extends Actor with ActorLogging {
 
       def filter(dataNode: Node) = {
         val monitorDateOpt = dataNode \ "MonitorDate"
-        val mDate = DateTime.parse(s"${monitorDateOpt.text.trim()}", DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
+        val mDate =
+          try{
+            DateTime.parse(s"${monitorDateOpt.text.trim()}", DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
+          }catch{
+            case _:Exception=>
+              DateTime.parse(s"${monitorDateOpt.text.trim()}", DateTimeFormat.forPattern("YYYY-MM-dd"))
+          }
+
         start <= mDate && mDate < end
       }
 
@@ -86,14 +91,20 @@ class OpenDataReceiver extends Actor with ActorLogging {
         val siteName = dataNode \ "SiteName"
         val itemId = dataNode \ "ItemId"
         val monitorDateOpt = dataNode \ "MonitorDate"
+        val siteID = (dataNode \ "SiteId").text.trim.toInt
 
         try {
           //Filter interested EPA monitor
-          if (EpaMonitor.nameMap.contains(siteName.text.trim()) &&
-            MonitorType.epaIdMap.contains(itemId.text.trim().toInt)) {
+          if (EpaMonitor.idMap.contains(siteID) &&
+            MonitorType.eapIdMap.contains(itemId.text.trim().toInt)) {
             val epaMonitor = EpaMonitor.withName(siteName.text.trim())
-            val monitorType = MonitorType.epaIdMap(itemId.text.trim().toInt)
-            val mDate = DateTime.parse(s"${monitorDateOpt.text.trim()}", DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
+            val monitorType = MonitorType.eapIdMap(itemId.text.trim().toInt)
+            val mDate = try {
+              DateTime.parse(s"${monitorDateOpt.text.trim()}", DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
+            }catch {
+              case _:Exception=>
+                DateTime.parse(s"${monitorDateOpt.text.trim()}", DateTimeFormat.forPattern("YYYY-MM-dd"))
+            }
 
             val monitorNodeValueSeq =
               for (v <- 0 to 23) yield {
@@ -138,7 +149,7 @@ class OpenDataReceiver extends Actor with ActorLogging {
           val MStation = EpaMonitor.map(monitor)
           val MItem = MonitorType.map(mtValue._1).epa_mapping.get
           val MDate: java.sql.Timestamp = dateTime
-          DB localTx { implicit session =>
+          DB autoCommit { implicit session =>
             sql"""
               UPDATE dbo.hour_data
               SET MValue = ${mtValue._2}
@@ -152,14 +163,15 @@ class OpenDataReceiver extends Actor with ActorLogging {
             """.update.apply
           }
         }
+
       if(updateCounts.sum != 0)
-        Logger.info(s"EPA ${updateCounts.sum} records have been upserted.")
+        Logger.debug(s"EPA ${updateCounts.sum} records have been upserted.")
 
       qualifiedData.size
     }
 
-    def getData(skip: Int) {
-      val url = s"https://data.epa.gov.tw/api/v1/aqx_p_15?format=xml&offset=${skip}&limit=${limit}&api_key=fa3fdec2-19b2-4108-a7f0-63ea3a9a776a"
+    def getThisMonth(skip: Int) {
+      val url = s"https://data.epa.gov.tw/api/v1/aqx_p_15?format=xml&offset=${skip}&limit=${limit}&api_key=fa3fdec2-19b2-4108-a7f0-63ea3a9a776a&&sort=MonitorDate%20desc"
       val future =
         WS.url(url).get().map {
           response =>
@@ -174,17 +186,43 @@ class OpenDataReceiver extends Actor with ActorLogging {
       future onFailure (errorHandler())
       future onSuccess ({
         case ret: Int =>
-          Logger.info(s"EPA ${ret} records have been upserted.")
           if (ret < limit) {
-            Logger.info(s"Import EPA ${start.toString()} to ${end} complete")
-            SystemConfig.setEpaLast(end)
+            Logger.info(s"Import EPA ${start.getYear()}/${start.getMonthOfYear()} complete")
           } else
-            getData(skip + limit)
+            getThisMonth(skip + limit)
       })
     }
 
-    getData(0)
+    def getMonthData(year:Int, month:Int, skip: Int) {
+      val url = f"https://data.epa.gov.tw/api/v1/aqx_p_15?format=xml&offset=$skip%d&limit=$limit&year_month=$year%d_$month%02d&api_key=fa3fdec2-19b2-4108-a7f0-63ea3a9a776a"
+      val f = WS.url(url).get()
+      f onFailure (errorHandler())
+      for(resp <- f) {
+        try {
+          val updateCount = parser(resp.xml)
+          if (updateCount < limit) {
+            Logger.info(f"Import EPA $year/$month%02d complete")
+            val dataLast = new DateTime(year, month, 1, 0, 0).plusMonths(1)
+            SystemConfig.setEpaLast(dataLast)
+            if(dataLast < end)
+              self ! ReloadEpaData(dataLast, end)
+          } else
+            getMonthData(year, month, skip + limit)
+        } catch {
+          case ex: Exception =>
+            Logger.error(ex.toString())
+            throw ex
+        }
+      }
+    }
+
+    if(start.toString("yyyy-M") == DateTime.now().toString("yyyy-M"))
+      getThisMonth(0)
+    else{
+      getMonthData(start.getYear(), start.getMonthOfYear(), 0)
+    }
   }
+
 
   override def postStop = {
     timer.cancel()
