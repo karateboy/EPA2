@@ -1145,8 +1145,8 @@ object Realtime {
     Map(kvs: _*)
   }
 
-  def getRealtimeMonitorStatusMap(current: Timestamp)(implicit session: DBSession = AutoSession) = {
-    val datetime = current.toDateTime
+  def getRealtimeMonitorStatusMap(current: Timestamp)(implicit session: DBSession = AutoSession):
+    Map[Monitor.Value, Map[MonitorType.Value, Option[String]]] = {
     val tab = Record.getTabName(TableType.Min)
     val records =
       sql"""
@@ -1172,12 +1172,13 @@ object Realtime {
     Map(kvs: _*)
   }
 
-  def getRealtimeWeatherMap(current: Timestamp)(implicit session: DBSession = AutoSession) = {
-    val datetime = current.toDateTime
+  def getRealtimeWeatherMap(current: Timestamp)(implicit session: DBSession = AutoSession):
+  Map[Monitor.Value, WeatherStat] = {
+    val tab = Record.getTabName(TableType.Min)
     val records =
       sql"""
       SELECT *
-      FROM MinRecord
+      FROM ${tab}
       WHERE M_DateTime = ${current}
       """.map {
         Record.mapper
