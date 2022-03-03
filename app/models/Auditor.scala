@@ -65,7 +65,7 @@ class AuditStat(hr: HourRecord) {
     val tab_name = Record.getTabName(TableType.Hour)
     val dataList = map map {
       x =>
-        MtRecord(x._1.toString(), x._2._1.get, x._2._2.get)
+        MtRecord(x._1.toString(), x._2._1.map(_.toDouble), x._2._2.get)
     }
     implicit val write = Json.writes[MtRecord]
     val dataListStr = Json.toJson(dataList).toString()
@@ -77,10 +77,10 @@ class AuditStat(hr: HourRecord) {
       """.update.apply
   }
 
-  def toHourRecord() = {
+  def toHourRecord(): HourRecord = {
     val dataList = map.toList map {
       x =>
-        MtRecord(x._1.toString(), x._2._1.get, x._2._2.get)
+        MtRecord(x._1.toString(), x._2._1.map(_.toDouble), x._2._2.get)
     }
     HourRecord(hr.monitor, hr.date, chk, dataList)
   }
