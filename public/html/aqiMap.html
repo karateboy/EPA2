@@ -1,0 +1,78 @@
+<div class="row" id="airMap">
+  <div class="col-lg-12">
+    <div class="panel panel-primary">
+      <div class="panel-heading panel-title">
+        <a data-toggle="collapse" data-parent="#accordion" href="#monitorType"
+          >全國空氣品質指標</a
+        >
+      </div>
+      <div class="panel-body">
+        <form class="form-horizontal">
+          <div class="form-group">
+            <label class="col-lg-2 control-label">選擇測項:</label>
+            <div class="col-lg-10">
+              <div class="btn-group" data-toggle="buttons">
+                <label
+                  v-for="mt in monitorTypeList"
+                  :key="mt"
+                  class="btn btn-outline btn-primary dim"
+                  :class="{ active: form.monitorType === mt }"
+                  @click="form.monitorType = mt"
+                >
+                  <input
+                    type="radio"
+                    name="monitorType"
+                    :value="mt"
+                    v-model="form.monitorType"
+                  />{{ mt }}</label
+                >
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="bg-info">
+      <img class="img-responsive center-block" :src="aqiUrl" alt="aqiMap" />
+    </div>
+  </div>
+</div>
+
+<script>
+  var app = new Vue({
+    el: '#airMap',
+    data() {
+      let monitorTypeList = ['AQI', 'PM25', 'PM10', 'O3', 'O3 8H'];
+      return {
+        form: {
+          monitorType: 'AQI',
+        },
+        monitorTypeList,
+      };
+    },
+    computed: {
+      aqiUrl() {
+        let current = moment().subtract(1, 'hours').subtract(10, 'minute');
+        let dayStr = current.format('YYYYMMDD');
+        let timeStr = current.format('YYYYMMDDHH0000');
+
+        console.log(this.form.monitorType);
+
+        switch (this.form.monitorType) {
+          case 'AQI':
+            return `https://airtw.epa.gov.tw/ModelSimulate/${dayStr}/output_AQI_${timeStr}.png`;
+          case 'PM25':
+            return `https://airtw.epa.gov.tw/ModelSimulate/${dayStr}/output_AVPM25_20220307230000.png`;
+          case 'PM10':
+            return `https://airtw.epa.gov.tw/ModelSimulate/${dayStr}/output_AVPM10_${timeStr}.png`;
+          case 'O3':
+            return `https://airtw.epa.gov.tw/ModelSimulate/${dayStr}/output_O3_${timeStr}.png`;
+          case 'O3 8H':
+            return `https://airtw.epa.gov.tw/ModelSimulate/${dayStr}/output_AVO3_${timeStr}.png`;
+          default:
+            return `https://airtw.epa.gov.tw/ModelSimulate/${dayStr}/output_AVO3_${timeStr}.png`;
+        }
+      },
+    },
+  });
+</script>
