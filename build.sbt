@@ -1,7 +1,7 @@
 
 name := """ttaqm"""
 
-version := "1.0.2"
+version := "1.0.3"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala, LauncherJarPlugin)
 

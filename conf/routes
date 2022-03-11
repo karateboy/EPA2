@@ -222,9 +222,11 @@ GET      /ImportEpaCSV                                                          
 
 # Data Logger
 GET      /HourRecordRange/:monitor                                                             controllers.DataLogger.getHourRecordRange(monitor)
-PUT      /HourRecord/:monitor                                                                  controllers.DataLogger.insertHourRecord(monitor)
+PUT      /HourRecord/:monitor                                                                  controllers.DataLogger.unsertHourRecord(monitor)
 GET      /MinRecordRange/:monitor                                                              controllers.DataLogger.getMinRecordRange(monitor)
-PUT      /MinRecord/:monitor                                                                   controllers.DataLogger.insertMinRecord(monitor)						
+PUT      /MinRecord/:monitor                                                                   controllers.DataLogger.unsertMinRecord(monitor)
+POST     /Record/Min/:monitor					                                               controllers.DataLogger.unsertMinRecord(monitor)
+POST     /Record/Hour/:monitor					                                               controllers.DataLogger.unsertHourRecord(monitor)
 GET      /CalibrationRecordRange/:monitor                                                      controllers.DataLogger.getCalibrationRange(monitor)
 PUT      /CalibrationRecord/:monitor                                                           controllers.DataLogger.insertCalibrationRecord(monitor)
 GET      /AlarmRecordRange/:monitor                                                            controllers.DataLogger.getAlarmRange(monitor)

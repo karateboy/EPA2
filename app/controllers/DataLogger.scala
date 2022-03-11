@@ -169,7 +169,7 @@ class DataLogger extends Controller {
   //    hr
   //  }
 
-  def insertDataRecord(tabType: TableType.Value)(monitorStr: String) = Action(BodyParsers.parse.json) {
+  def upsertDataRecord(tabType: TableType.Value)(monitorStr: String): Action[JsValue] = Action(BodyParsers.parse.json) {
     implicit request =>
       val monitor = Monitor.withName(monitorStr)
       val result = request.body.validate[Seq[RecordList]]
@@ -189,7 +189,7 @@ class DataLogger extends Controller {
           else
             current.path.getAbsolutePath + "/export/minute/"
 
-          def saveCSV = {
+          def saveCSV() = {
             try {
               recordListSeq map {
                 recordList =>
@@ -206,12 +206,13 @@ class DataLogger extends Controller {
                 Logger.error("failed to export csv", ex)
             }
           }
+          saveCSV
 
           val auditedHrList = hrList map {
             hr =>
               Auditor.auditHourRecord(monitor, Monitor.map(monitor).autoAudit, hr)
           }
-          
+
           auditedHrList.foreach { hr =>
             try {
               hr.save(tabType)
@@ -227,9 +228,9 @@ class DataLogger extends Controller {
         })
   }
 
-  def insertHourRecord = insertDataRecord(TableType.Hour) _
+  def unsertHourRecord = upsertDataRecord(TableType.Hour) _
 
-  def insertMinRecord = insertDataRecord(TableType.Min) _
+  def unsertMinRecord = upsertDataRecord(TableType.Min) _
 
   def getCalibrationRange(monitorStr: String) = Action {
     val monitor = Monitor.withName(monitorStr)
