@@ -75,7 +75,7 @@ class OpenDataReceiver extends Actor with ActorLogging {
       val recordMap = Map.empty[EpaMonitor.Value, Map[DateTime, Map[MonitorType.Value, Double]]]
 
       def filter(dataNode: Node) = {
-        val monitorDateOpt = dataNode \ "MonitorDate"
+        val monitorDateOpt = dataNode \ "MonitorDate".toUpperCase
         val mDate =
           try{
             DateTime.parse(s"${monitorDateOpt.text.trim()}", DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
@@ -88,10 +88,10 @@ class OpenDataReceiver extends Actor with ActorLogging {
       }
 
       def processData(dataNode: Node) {
-        val siteName = dataNode \ "SiteName"
-        val itemId = dataNode \ "ItemId"
-        val monitorDateOpt = dataNode \ "MonitorDate"
-        val siteID = (dataNode \ "SiteId").text.trim.toInt
+        val siteName = dataNode \ "SiteName".toUpperCase
+        val itemId = dataNode \ "ItemId".toUpperCase
+        val monitorDateOpt = dataNode \ "MonitorDate".toUpperCase
+        val siteID = (dataNode \ "SiteId".toUpperCase).text.trim.toInt
 
         try {
           //Filter interested EPA monitor
@@ -109,7 +109,7 @@ class OpenDataReceiver extends Actor with ActorLogging {
             val monitorNodeValueSeq =
               for (v <- 0 to 23) yield {
                 val monitorValue = try {
-                  Some((dataNode \ "MonitorValue%02d".format(v)).text.trim().toDouble)
+                  Some((dataNode \ "MonitorValue%02d".format(v).toUpperCase).text.trim().toDouble)
                 } catch {
                   case x: Throwable =>
                     None
@@ -171,7 +171,7 @@ class OpenDataReceiver extends Actor with ActorLogging {
     }
 
     def getThisMonth(skip: Int) {
-      val url = s"https://data.epa.gov.tw/api/v1/aqx_p_15?format=xml&offset=${skip}&limit=${limit}&api_key=fa3fdec2-19b2-4108-a7f0-63ea3a9a776a&&sort=MonitorDate%20desc"
+      val url = s"https://data.epa.gov.tw/api/v2/aqx_p_15?format=xml&offset=${skip}&limit=${limit}&api_key=1f4ca8f8-8af9-473d-852b-b8f2d575f26a&&sort=MonitorDate%20desc"
       val future =
         WS.url(url).get().map {
           response =>
@@ -194,7 +194,7 @@ class OpenDataReceiver extends Actor with ActorLogging {
     }
 
     def getMonthData(year:Int, month:Int, skip: Int) {
-      val url = f"https://data.epa.gov.tw/api/v1/aqx_p_15?format=xml&offset=$skip%d&limit=$limit&year_month=$year%d_$month%02d&api_key=fa3fdec2-19b2-4108-a7f0-63ea3a9a776a"
+      val url = f"https://data.epa.gov.tw/api/v2/aqx_p_15?format=xml&offset=$skip%d&limit=$limit&year_month=$year%d_$month%02d&api_key=1f4ca8f8-8af9-473d-852b-b8f2d575f26a"
       val f = WS.url(url).get()
       f onFailure (errorHandler())
       for(resp <- f) {
