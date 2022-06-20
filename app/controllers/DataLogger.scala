@@ -19,7 +19,7 @@ case class RecordList(mtDataList: Seq[MtRecord], _id: RecordListID) {
   }
 }
 
-case class CalibrationJSON(monitorType: String, startTime: Long, endTime: Long, zero_val: Option[Double],
+case class CalibrationJSON(var monitorType: String, startTime: Long, endTime: Long, zero_val: Option[Double],
                            span_std: Option[Double], span_val: Option[Double]) {
   def zero_dev = zero_val map {
     Math.abs(_)
@@ -178,6 +178,10 @@ class DataLogger extends Controller {
         BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString().toString()))
       },
         recordListSeq => {
+          recordListSeq.foreach(recordList => recordList.mtDataList.foreach(mtRecord=>{
+            if(mtRecord.mtName == "NOX")
+              mtRecord.mtName = "NOx"
+          } ))
           val hrList = recordListSeq.map {
             _.toHourRecord(monitor)
           }
@@ -247,6 +251,8 @@ class DataLogger extends Controller {
 
   def toCalibrationItem(json: CalibrationJSON)(monitorStr: String) = {
     val monitor = Monitor.withName(monitorStr)
+    if(json.monitorType == "NOX")
+      json.monitorType = "NOx"
     val mt = MonitorType.withName(json.monitorType)
 
     CalibrationItem(monitor, mt,
