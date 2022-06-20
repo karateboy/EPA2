@@ -1,25 +1,20 @@
 package controllers
 
-import java.io.FileOutputStream
-
-import play.api._
-import play.api.mvc._
-import play.api.Logger
-import models._
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
+import models._
+import play.api.Logger
 import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import javax.inject._
+import play.api.mvc._
 
-import play.api.i18n._
+import java.sql.Timestamp
+import java.util.Date
 
 case class LatestRecordTime(time: Long)
-
-case class RecordList(time: Long, mtDataList: Seq[MtRecord]) {
+case class RecordListID(time: Date, monitor: String)
+case class RecordList(mtDataList: Seq[MtRecord], _id: RecordListID) {
   def toHourRecord(monitor: Monitor.Value) = {
-    import java.sql.Timestamp
-    val tm = new Timestamp(time)
+    val tm = new Timestamp(_id.time.getTime)
     Record.HourRecord(monitor.toString(), tm, None, mtDataList)
   }
 }
@@ -49,6 +44,7 @@ case class Alarm2JSON(time: Long, src: String, level: Int, info: String)
 class DataLogger extends Controller {
   implicit val latestRecordTimeWrite = Json.writes[LatestRecordTime]
   implicit val mtRecordRead = Json.reads[MtRecord]
+  implicit val idReads = Json.reads[RecordListID]
   implicit val RecordListRead = Json.reads[RecordList]
   implicit val CalibrationRead = Json.reads[CalibrationJSON]
 
@@ -71,7 +67,7 @@ class DataLogger extends Controller {
   def exportCSV(monitor: Monitor.Value, calibrated: Boolean = false)(recordList: RecordList) = {
     import scala.collection.mutable.StringBuilder
     val sb = new StringBuilder
-    implicit val tm = new DateTime(recordList.time)
+    implicit val tm = new DateTime(recordList._id.time)
     implicit val calibrationMap = Calibration.getDailyCalibrationMap(monitor, tm)
 
     sb.append("Site,")
@@ -96,7 +92,8 @@ class DataLogger extends Controller {
       if (!calibrated) {
         r.mtName match {
           case _: String =>
-            sb.append(r.value.toFloat)
+            for(v<-r.value)
+            sb.append(v)
             sb.append(",")
             sb.append(r.status)
             sb.append(",")
@@ -104,7 +101,7 @@ class DataLogger extends Controller {
       } else {
         val mt = MonitorType.withName(r.mtName)
         import Calibration._
-        implicit val v = Some(r.value.toFloat)
+        implicit val v = r.value.map(_.toFloat)
 
         if (canCalibrate(mt)) {
           val calibrated = doCalibrate(mt)
@@ -120,8 +117,8 @@ class DataLogger extends Controller {
             for {
               recNOx <- recNOxOpt
               recNO <- recNO_Opt
-              NOx <- doCalibrate(MonitorType.NOx)(Some(recNOx.value.toFloat), tm, calibrationMap)
-              NO <- doCalibrate(MonitorType.NO)(Some(recNO.value.toFloat), tm, calibrationMap)
+              NOx <- doCalibrate(MonitorType.NOx)(recNOx.value.map(_.toFloat), tm, calibrationMap)
+              NO <- doCalibrate(MonitorType.NO)(recNO.value.map(_.toFloat), tm, calibrationMap)
             } yield NOx - NO
 
           if (interpolatedNO2.isDefined) {
@@ -142,8 +139,8 @@ class DataLogger extends Controller {
             for {
               recCH4 <- recCH4Opt
               recTHC <- recTHC_Opt
-              ch4 <- doCalibrate(MonitorType.CH4)(Some(recCH4.value.toFloat), tm, calibrationMap)
-              thc <- doCalibrate(MonitorType.THC)(Some(recTHC.value.toFloat), tm, calibrationMap)
+              ch4 <- doCalibrate(MonitorType.CH4)(recCH4.value.map(_.toFloat), tm, calibrationMap)
+              thc <- doCalibrate(MonitorType.THC)(recTHC.value.map(_.toFloat), tm, calibrationMap)
             } yield thc - ch4
 
           if (interpolatedNMHC.isDefined) {
@@ -172,7 +169,7 @@ class DataLogger extends Controller {
   //    hr
   //  }
 
-  def insertDataRecord(tabType: TableType.Value)(monitorStr: String) = Action(BodyParsers.parse.json) {
+  def upsertDataRecord(tabType: TableType.Value)(monitorStr: String): Action[JsValue] = Action(BodyParsers.parse.json) {
     implicit request =>
       val monitor = Monitor.withName(monitorStr)
       val result = request.body.validate[Seq[RecordList]]
@@ -181,6 +178,10 @@ class DataLogger extends Controller {
         BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString().toString()))
       },
         recordListSeq => {
+          recordListSeq.foreach(recordList => recordList.mtDataList.foreach(mtRecord=>{
+            if(mtRecord.mtName == "NOX")
+              mtRecord.mtName = "NOx"
+          } ))
           val hrList = recordListSeq.map {
             _.toHourRecord(monitor)
           }
@@ -192,12 +193,12 @@ class DataLogger extends Controller {
           else
             current.path.getAbsolutePath + "/export/minute/"
 
-          def saveCSV = {
+          def saveCSV() = {
             try {
               recordListSeq map {
                 recordList =>
                   import java.io.FileOutputStream
-                  val time = new DateTime(recordList.time)
+                  val time = new DateTime(recordList._id.time)
                   val csvStr = exportCSV(monitor, SystemConfig.getApplyCalibration)(recordList)
                   val fileName = s"${monitor.toString}_${time.toString("YYMMddHHmm")}.csv"
                   val os = new FileOutputStream(path + fileName)
@@ -209,12 +210,13 @@ class DataLogger extends Controller {
                 Logger.error("failed to export csv", ex)
             }
           }
+          saveCSV
 
           val auditedHrList = hrList map {
             hr =>
               Auditor.auditHourRecord(monitor, Monitor.map(monitor).autoAudit, hr)
           }
-          
+
           auditedHrList.foreach { hr =>
             try {
               hr.save(tabType)
@@ -230,9 +232,9 @@ class DataLogger extends Controller {
         })
   }
 
-  def insertHourRecord = insertDataRecord(TableType.Hour) _
+  def unsertHourRecord = upsertDataRecord(TableType.Hour) _
 
-  def insertMinRecord = insertDataRecord(TableType.Min) _
+  def unsertMinRecord = upsertDataRecord(TableType.Min) _
 
   def getCalibrationRange(monitorStr: String) = Action {
     val monitor = Monitor.withName(monitorStr)
@@ -358,8 +360,6 @@ class DataLogger extends Controller {
 
     Ok(Json.toJson(latestRecordTime))
   }
-
-  import InstrumentStatus._
 
   def insertInstrumentStatusRecord(monitorStr: String) = Action(BodyParsers.parse.json) {
     implicit request =>

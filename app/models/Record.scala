@@ -36,7 +36,7 @@ object TableType extends Enumeration {
   }
 }
 
-case class MtRecord(mtName: String, value: Double, status: String)
+case class MtRecord(var mtName: String, value: Option[Double], status: String)
 
 object Record {
   case class HourRecord(
@@ -64,15 +64,15 @@ object Record {
       }
     }
 
-    def valueMap = {
+    def valueMap: Map[MonitorType.Value, (Option[Float], Option[String])] = {
       val pairSeq = dataList flatMap {
         mtRecord =>
           try {
             val mt = MonitorType.withName(mtRecord.mtName)
-            val value = (Some(mtRecord.value.toFloat): Option[Float], Some(mtRecord.status): Option[String])
+            val value = (mtRecord.value.map(_.toFloat): Option[Float], Some(mtRecord.status): Option[String])
             Some(mt -> value)
           } catch {
-            case x: java.util.NoSuchElementException =>
+            case _: java.util.NoSuchElementException =>
               None
           }
       }
