@@ -19,7 +19,7 @@ case class RecordList(mtDataList: Seq[MtRecord], _id: RecordListID) {
   }
 }
 
-case class CalibrationJSON(monitorType: String, startTime: Long, endTime: Long, zero_val: Option[Double],
+case class CalibrationJSON(var monitorType: String, startTime: Long, endTime: Long, zero_val: Option[Double],
                            span_std: Option[Double], span_val: Option[Double]) {
   def zero_dev = zero_val map {
     Math.abs(_)
@@ -178,7 +178,12 @@ class DataLogger extends Controller {
         BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString().toString()))
       },
         recordListSeq => {
-          val hrList = recordListSeq.map {
+          recordListSeq.foreach(recordList => recordList.mtDataList.foreach(mtRecord=>{
+            if(mtRecord.mtName == "NOX")
+              mtRecord.mtName = "NOx"
+          } ))
+          val nonEmptyRecordLists = recordListSeq.filter(_.mtDataList.nonEmpty)
+          val hrList = nonEmptyRecordLists.map {
             _.toHourRecord(monitor)
           }
 
@@ -191,7 +196,7 @@ class DataLogger extends Controller {
 
           def saveCSV() = {
             try {
-              recordListSeq map {
+              nonEmptyRecordLists map {
                 recordList =>
                   import java.io.FileOutputStream
                   val time = new DateTime(recordList._id.time)
@@ -228,9 +233,9 @@ class DataLogger extends Controller {
         })
   }
 
-  def unsertHourRecord = upsertDataRecord(TableType.Hour) _
+  def upsertHourRecord = upsertDataRecord(TableType.Hour) _
 
-  def unsertMinRecord = upsertDataRecord(TableType.Min) _
+  def upsertMinRecord = upsertDataRecord(TableType.Min) _
 
   def getCalibrationRange(monitorStr: String) = Action {
     val monitor = Monitor.withName(monitorStr)
@@ -247,6 +252,8 @@ class DataLogger extends Controller {
 
   def toCalibrationItem(json: CalibrationJSON)(monitorStr: String) = {
     val monitor = Monitor.withName(monitorStr)
+    if(json.monitorType == "NOX")
+      json.monitorType = "NOx"
     val mt = MonitorType.withName(json.monitorType)
 
     CalibrationItem(monitor, mt,

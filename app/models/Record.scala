@@ -36,7 +36,7 @@ object TableType extends Enumeration {
   }
 }
 
-case class MtRecord(mtName: String, value: Option[Double], status: String)
+case class MtRecord(var mtName: String, value: Option[Double], status: String)
 
 object Record {
   case class HourRecord(
