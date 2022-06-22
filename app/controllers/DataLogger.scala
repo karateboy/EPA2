@@ -182,7 +182,8 @@ class DataLogger extends Controller {
             if(mtRecord.mtName == "NOX")
               mtRecord.mtName = "NOx"
           } ))
-          val hrList = recordListSeq.map {
+          val nonEmptyRecordLists = recordListSeq.filter(_.mtDataList.nonEmpty)
+          val hrList = nonEmptyRecordLists.map {
             _.toHourRecord(monitor)
           }
 
@@ -195,7 +196,7 @@ class DataLogger extends Controller {
 
           def saveCSV() = {
             try {
-              recordListSeq map {
+              nonEmptyRecordLists map {
                 recordList =>
                   import java.io.FileOutputStream
                   val time = new DateTime(recordList._id.time)
@@ -232,9 +233,9 @@ class DataLogger extends Controller {
         })
   }
 
-  def unsertHourRecord = upsertDataRecord(TableType.Hour) _
+  def upsertHourRecord = upsertDataRecord(TableType.Hour) _
 
-  def unsertMinRecord = upsertDataRecord(TableType.Min) _
+  def upsertMinRecord = upsertDataRecord(TableType.Min) _
 
   def getCalibrationRange(monitorStr: String) = Action {
     val monitor = Monitor.withName(monitorStr)
