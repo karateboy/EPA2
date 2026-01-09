@@ -1,4 +1,5 @@
 package models
+
 import java.sql.Timestamp
 import scalikejdbc._
 import play.api._
@@ -9,24 +10,26 @@ import models._
 import play.api.i18n._
 
 case class Stat(
-  avg:       Option[Float],
-  min:       Option[Float],
-  max:       Option[Float],
-  count:     Int,
-  total:     Int,
-  overCount: Int) {
+                 avg: Option[Float],
+                 min: Option[Float],
+                 max: Option[Float],
+                 count: Int,
+                 total: Int,
+                 overCount: Int) {
   val effectPercent = if (total != 0) Some(count.toFloat * 100 / total) else None
   val overPercent = if (total != 0) Some(overCount.toFloat * 100 / total) else None
 }
 
 case class MonitorTypeRecord(monitorType: MonitorType.Value, dataList: List[(Timestamp, Option[Float], Option[String])], stat: Stat)
+
 case class DailyReport(
-  typeList: Seq[MonitorTypeRecord])
+                        typeList: Seq[MonitorTypeRecord])
 
 object TableType extends Enumeration {
   val Min = Value("Min")
   val Hour = Value("Hour")
   val defaultMap = Map((Min -> "分鐘資料"), (Hour -> "小時資料"))
+
   def map(key: TableType.Value)(implicit messages: Messages) = {
     val messageKey = s"dataSet.$key"
     if (Messages.isDefinedAt(messageKey))
@@ -40,10 +43,10 @@ case class MtRecord(var mtName: String, value: Option[Double], status: String)
 
 object Record {
   case class HourRecord(
-    monitor:  String,
-    date:     Timestamp,
-    chk:      Option[String] = None,
-    dataList: Seq[MtRecord]  = Seq.empty[MtRecord]) {
+                         monitor: String,
+                         date: Timestamp,
+                         chk: Option[String] = None,
+                         dataList: Seq[MtRecord] = Seq.empty[MtRecord]) {
 
     def save(tab: TableType.Value) {
       val tab_name = Record.getTabName(tab)
@@ -82,20 +85,22 @@ object Record {
 
     def recordMap = {
       val vMap = valueMap
+
       def optMap(mt: MonitorType.Value) = {
         vMap.getOrElse(mt, (None, None))
       }
+
       optMap _
     }
   }
 
   case class SixSecRecord(
-    monitor:       Monitor.Value,
-    time:          DateTime,
-    winSpeed:      Seq[Option[Float]],
-    winSpeed_stat: Seq[Option[String]],
-    winDir:        Seq[Option[Float]],
-    winDir_stat:   Seq[Option[String]])
+                           monitor: Monitor.Value,
+                           time: DateTime,
+                           winSpeed: Seq[Option[Float]],
+                           winSpeed_stat: Seq[Option[String]],
+                           winDir: Seq[Option[Float]],
+                           winDir_stat: Seq[Option[String]])
 
   type MinRecord = HourRecord
 
@@ -145,12 +150,15 @@ object Record {
       List.empty[HourRecord]
     else {
       val tab_name = getTabName(TableType.Hour)
-      val result = sql"""
+      val result =
+        sql"""
         Select * 
         From ${tab_name}
         Where DP_NO=${monitorName} and M_DateTime >= ${start} and M_DateTime < ${end}
         ORDER BY M_DateTime ASC
-      """.map { mapper }.list().apply()
+      """.map {
+          mapper
+        }.list().apply()
       result
     }
   }
@@ -170,7 +178,9 @@ object Record {
         From ${tab_name}
         Where DP_NO=${monitorName} and M_DateTime >= ${start} and M_DateTime < ${end} and CHK is Null
         ORDER BY M_DateTime ASC
-      """.map { mapper }.list().apply()
+      """.map {
+        mapper
+      }.list().apply()
     }
   }
 
@@ -189,7 +199,9 @@ object Record {
         From ${tab_name}
         Where DP_NO=${monitorName} and M_DateTime >= ${start} and M_DateTime < ${end} and CHK = 'BAD'
         ORDER BY M_DateTime ASC
-      """.map { mapper }.list().apply()
+      """.map {
+        mapper
+      }.list().apply()
     }
   }
 
@@ -208,7 +220,9 @@ object Record {
         From ${tab_name}
         Where DP_NO=${monitorName} and M_DateTime >= ${start} and M_DateTime < ${end}
         ORDER BY M_DateTime ASC
-      """.map { mapper }.list().apply()
+      """.map {
+        mapper
+      }.list().apply()
     }
   }
 
@@ -235,6 +249,7 @@ object Record {
     def projection(hr: HourRecord) = {
       hr.recordMap(mt)
     }
+
     projection _
   }
 
@@ -269,7 +284,7 @@ object Record {
 
   case class RecordValidationReport(start: DateTime, end: DateTime,
                                     hourReport: Map[Monitor.Value, Int],
-                                    minReport:  Map[Monitor.Value, Int])
+                                    minReport: Map[Monitor.Value, Int])
 
   def getRecordValidationReport(start: DateTime, end: DateTime) = {
     DB readOnly { implicit session =>
@@ -315,6 +330,7 @@ object Record {
   }
 
   type RecordT = (Timestamp, Option[Float], Option[String])
+
   def windAvg(windSpeed: List[RecordT], windDir: List[RecordT]): Float = {
     def validFilter(t: RecordT) = {
       if (t._2.isEmpty)
@@ -322,7 +338,7 @@ object Record {
       else {
         t._3 match {
           case Some(stat) => MonitorStatus.isNormalStat(stat)
-          case _          => false
+          case _ => false
         }
       }
     }
@@ -344,6 +360,38 @@ object Record {
     val windRecord = windSpeed.zip(windDir)
     val wind_sin = windRecord.map(v => v._1 * Math.sin(Math.toRadians(v._2))).sum
     val wind_cos = windRecord.map(v => v._1 * Math.cos(Math.toRadians(v._2))).sum
+    windAvg(wind_sin, wind_cos)
+  }
+
+  private def getSinCosSum(speedList: Seq[Float], directionList: Seq[Float]): Option[(Float, Float)] = {
+    val speedDirections = speedList.zip(directionList)
+    if (speedDirections.nonEmpty) {
+      val sinSum = speedDirections.map(v => v._1 * Math.sin(Math.toRadians(v._2))).sum.toFloat
+      val cosSum = speedDirections.map(v => v._1 * Math.cos(Math.toRadians(v._2))).sum.toFloat
+      Some((sinSum, cosSum))
+    } else
+      None
+  }
+
+  def directionAvg(sum_sin: Float, sum_cos: Float): Float = {
+    val degree = Math.toDegrees(Math.atan2(sum_sin, sum_cos))
+    if (degree >= 0)
+      degree.toFloat
+    else
+      (degree + 360).toFloat
+  }
+
+  def directionAvg(speedList: Seq[Float], directionList: Seq[Float]): Option[Float] =
+    for ((sinSum, cosSum) <- getSinCosSum(speedList, directionList)) yield
+      directionAvg(sinSum, cosSum)
+
+  def windDirAvg(windSpeed: List[Float], windDir: List[Float]): Float = {
+    if (windSpeed.length != windDir.length)
+      Logger.error(s"windSpeed #=${windSpeed.length} windDir #=${windDir.length}")
+
+    val windRecord = windSpeed.zip(windDir)
+    val wind_sin = windRecord.map(v => Math.sin(Math.toRadians(v._2))).sum
+    val wind_cos = windRecord.map(v => Math.cos(Math.toRadians(v._2))).sum
     windAvg(wind_sin, wind_cos)
   }
 
@@ -373,7 +421,9 @@ object Record {
         MonitorStatusFilter.isMatched(monitorStatusFilter, stat)
       }
 
-      val usedMonitoredTypes = Monitor.map(monitor).monitorTypes.filter { includeTypes.contains(_) }
+      val usedMonitoredTypes = Monitor.map(monitor).monitorTypes.filter {
+        includeTypes.contains(_)
+      }
 
       val actualMonitoredTypes =
         if (usedMonitoredTypes.length == 0)
@@ -452,7 +502,9 @@ object Record {
         MonitorStatusFilter.isMatched(monitorStatusFilter, stat)
       }
 
-      val usedMonitoredTypes = Monitor.map(monitor).monitorTypes.filter { includeTypes.contains(_) }
+      val usedMonitoredTypes = Monitor.map(monitor).monitorTypes.filter {
+        includeTypes.contains(_)
+      }
 
       val actualMonitoredTypes =
         if (usedMonitoredTypes.length == 0)
@@ -532,6 +584,13 @@ object Record {
                 val windSpeedT = monitorTypeProject2(MonitorType.WD_SPEED)
                 val windSpeed = reportList.map(rs => (rs.date, windSpeedT(rs)._1, windSpeedT(rs)._2))
                 windAvg(windSpeed, windDir)
+              } else if (mt == MonitorType.WD_SPEED) {
+                val windSpeed = validValues
+                val windDirT = monitorTypeProject2(MonitorType.WD_DIR)
+                val windDir = reportList.flatMap(rs => windDirT(rs)._1)
+                directionAvg(windSpeed, windDir).getOrElse(0f)
+              } else if (mt == MonitorType.RAIN) {
+                validValues.sum
               } else {
                 val sum = validValues.sum
                 if (count != 0) sum / count else 0
@@ -549,6 +608,7 @@ object Record {
   }
 
   case class MonitorEffectiveRate(monitor: Monitor.Value, rateMap: Map[MonitorType.Value, Float])
+
   def getMonitorEffectiveRate(monitor: Monitor.Value, start: DateTime): MonitorEffectiveRate = {
     val end = start + 1.month
     getMonitorEffectiveRate(monitor, start, end)
@@ -571,6 +631,7 @@ object Record {
   }
 
   case class MonitorTypeEffectiveRate(monitorType: MonitorType.Value, rateMap: Map[Monitor.Value, Float])
+
   def getMonitorTypeEffectiveRate(monitorType: MonitorType.Value, start: DateTime) = {
     val end = start + 1.month
 
@@ -588,6 +649,7 @@ object Record {
     val rateMap = Map(ratePair: _*)
     MonitorTypeEffectiveRate(monitorType, rateMap)
   }
+
   def getMonitorTypeYearlyEffectiveRate(monitorType: MonitorType.Value, start: DateTime) = {
     val end = start + 1.year
     var current = start
@@ -622,7 +684,9 @@ object Record {
         avg = if (count != 0)
           sum / count else 0
       } yield if (count != 0)
-        (mt -> Stat(Some(avg), Some(mtRateList.filter { _ != 0 }.min), Some(mtRateList.max), count, mtRateList.length, 0))
+        (mt -> Stat(Some(avg), Some(mtRateList.filter {
+          _ != 0
+        }.min), Some(mtRateList.max), count, mtRateList.length, 0))
       else
         (mt -> Stat(None, None, None, count, mtRateList.length, 0))
 
@@ -639,7 +703,9 @@ object Record {
         avg = if (count != 0)
           sum / count else 0
       } yield if (count != 0)
-        (m -> Stat(Some(avg), Some(mRateList.filter { _ != 0 }.min), Some(mRateList.max), count, mRateList.length, 0))
+        (m -> Stat(Some(avg), Some(mRateList.filter {
+          _ != 0
+        }.min), Some(mRateList.max), count, mRateList.length, 0))
       else
         (m -> Stat(None, None, None, count, mRateList.length, 0))
 
@@ -687,6 +753,7 @@ object Record {
 
     def winSpeedPercent(winSpeedList: ListBuffer[Float]) = {
       val count = new Array[Float](level.length + 1)
+
       def getIdx(v: Float): Int = {
         for (i <- 0 to level.length - 1) {
           if (v < level(i))
@@ -746,6 +813,7 @@ object Record {
   }
 
   case class EpaHourRecord(monitor: EpaMonitor.Value, time: DateTime, monitorType: MonitorType.Value, value: Float)
+
   def getEpaHourRecord(epaMonitor: EpaMonitor.Value, monitorType: MonitorType.Value, startTime: DateTime, endTime: DateTime)(implicit session: DBSession = AutoSession) = {
     val start: Timestamp = startTime
     val end: Timestamp = endTime
@@ -791,8 +859,8 @@ object Record {
     recordMap
   }
 
-  def getEpaRecordMap(epaMonitorList: List[EpaMonitor.Value], monitorTypeList: List[MonitorType.Value], 
-      startTime: DateTime, endTime: DateTime)(implicit session: DBSession = AutoSession) = {
+  def getEpaRecordMap(epaMonitorList: List[EpaMonitor.Value], monitorTypeList: List[MonitorType.Value],
+                      startTime: DateTime, endTime: DateTime)(implicit session: DBSession = AutoSession) = {
     val start: Timestamp = startTime
     val end: Timestamp = endTime
     val monitorIdList = epaMonitorList.map(EpaMonitor.map(_).id)
