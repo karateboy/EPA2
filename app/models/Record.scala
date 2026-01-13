@@ -381,6 +381,10 @@ object Record {
       (degree + 360).toFloat
   }
 
+  def speedAvg(speedList: Seq[Float], directionList: Seq[Float]): Option[Float] =
+    for ((sinSum, cosSum) <- getSinCosSum(speedList, directionList)) yield
+      (Math.sqrt(sinSum * sinSum + cosSum * cosSum) / Math.min(speedList.length, directionList.length)).toFloat
+
   def directionAvg(speedList: Seq[Float], directionList: Seq[Float]): Option[Float] =
     for ((sinSum, cosSum) <- getSinCosSum(speedList, directionList)) yield
       directionAvg(sinSum, cosSum)
@@ -447,15 +451,24 @@ object Record {
           })
           count = validValues.length
         } yield {
-          val avg = if (MonitorType.windDirList.contains(mt)) {
-            val windDir = projections
-            val wsT = monitorTypeProject2(MonitorType.WD_SPEED)
-            val windSpeed = reportList.map(rs => (rs.date, wsT(rs)._1, wsT(rs)._2))
-            windAvg(windSpeed, windDir)
-          } else {
-            val sum = validValues.sum
-            if (count != 0) sum / count else 0
-          }
+          val avg =
+            if (mt == MonitorType.WD_SPEED) {
+              val windSpeed = validValues
+              val windDirP = monitorTypeProject2(MonitorType.WD_DIR)
+              val windDir = reportList.flatMap(rs => windDirP(rs)._1)
+              speedAvg(windSpeed, windDir).getOrElse(0f)
+            } else if (mt == MonitorType.WD_DIR) {
+              val windDir = validValues
+              val windSpeedP = monitorTypeProject2(MonitorType.WD_SPEED)
+              val windSpeed = reportList.flatMap(rs => windSpeedP(rs)._1)
+              directionAvg(windSpeed, windDir).getOrElse(0f)
+            } else if (mt == MonitorType.RAIN) {
+              validValues.sum
+            } else {
+              val sum = validValues.sum
+              if (count != 0) sum / count else 0
+            }
+
 
           val stat =
             if (count != 0) {
@@ -579,22 +592,23 @@ object Record {
         } yield {
           val stat =
             if (count >= 16) {
-              val avg = if (MonitorType.windDirList.contains(mt)) {
-                val windDir = projections
-                val windSpeedT = monitorTypeProject2(MonitorType.WD_SPEED)
-                val windSpeed = reportList.map(rs => (rs.date, windSpeedT(rs)._1, windSpeedT(rs)._2))
-                windAvg(windSpeed, windDir)
-              } else if (mt == MonitorType.WD_SPEED) {
-                val windSpeed = validValues
-                val windDirT = monitorTypeProject2(MonitorType.WD_DIR)
-                val windDir = reportList.flatMap(rs => windDirT(rs)._1)
-                directionAvg(windSpeed, windDir).getOrElse(0f)
-              } else if (mt == MonitorType.RAIN) {
-                validValues.sum
-              } else {
-                val sum = validValues.sum
-                if (count != 0) sum / count else 0
-              }
+              val avg =
+                if (mt == MonitorType.WD_SPEED) {
+                  val windSpeed = validValues
+                  val windDirP = monitorTypeProject2(MonitorType.WD_DIR)
+                  val windDir = reportList.flatMap(rs => windDirP(rs)._1)
+                  speedAvg(windSpeed, windDir).getOrElse(0f)
+                } else if (mt == MonitorType.WD_DIR) {
+                  val windDir = validValues
+                  val windSpeedP = monitorTypeProject2(MonitorType.WD_SPEED)
+                  val windSpeed = reportList.flatMap(rs => windSpeedP(rs)._1)
+                  directionAvg(windSpeed, windDir).getOrElse(0f)
+                } else if (mt == MonitorType.RAIN) {
+                  validValues.sum
+                } else {
+                  val sum = validValues.sum
+                  if (count != 0) sum / count else 0
+                }
               val max = validValues.max
               val min = validValues.min
               Stat(Some(avg), Some(min), Some(max), count, total, 0)
@@ -902,7 +916,7 @@ object Record {
         val count = data.length
         val stat =
           if (count != 0) {
-            if (MonitorType.windDirList.contains(mt)) {
+            if (MonitorType.WD_DIR == mt) {
               val windDir = mtRecord.map(r => (r._1: java.sql.Timestamp, r._2._1, r._2._2))
               val wsT = monitorTypeProject2(MonitorType.WD_SPEED)
               val windSpeed = hrRecord.map(rs => (rs.date: java.sql.Timestamp, wsT(rs)._1, wsT(rs)._2))
